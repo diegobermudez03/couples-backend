@@ -8,6 +8,7 @@ import (
 	"github.com/diegobermudez03/couples-backend/internal/config"
 	"github.com/diegobermudez03/couples-backend/internal/http/handlers"
 	"github.com/diegobermudez03/couples-backend/pkg/auth/appauth"
+	"github.com/diegobermudez03/couples-backend/pkg/auth/repoauth"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -71,9 +72,10 @@ func (s *APIServer) Shutdown() error{
 
 func (s *APIServer) injectDependencies(router *chi.Mux){
 	//create respositories
+	authRepository := repoauth.NewAuthPostgresRepo()
 
 	//create services
-	authService := appauth.NewAuthService()
+	authService := appauth.NewAuthService(authRepository, s.config.AuthConfig.AccessTokenLife)
 
 	//create handlers
 	authHandler := handlers.NewAuthHandler(authService)

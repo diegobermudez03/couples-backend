@@ -48,7 +48,7 @@ func (h *AuthHandler) registerEndpoint(w http.ResponseWriter, r *http.Request){
 	}
 
 	// call service
-	accessToken, refreshToken, err := h.authService.RegisterUser(
+	refreshToken, err := h.authService.RegisterUser(
 		payload.Email,
 		payload.Password,
 		payload.Device,
@@ -65,7 +65,6 @@ func (h *AuthHandler) registerEndpoint(w http.ResponseWriter, r *http.Request){
 		http.StatusCreated, 
 		map[string]any{
 			"refreshToken" : refreshToken,
-			"accessToken" : accessToken,
 		},
 	)
 
