@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/diegobermudez03/couples-backend/internal/config"
+	"github.com/diegobermudez03/couples-backend/internal/http/handlers"
+	"github.com/diegobermudez03/couples-backend/pkg/auth/appauth"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -52,6 +54,7 @@ func (s *APIServer) Run() error{
 
 
 	//depencency injections
+	s.injectDependencies(router)
 
 	s.server = http.Server{
 		Addr: "localhost:" + s.config.Port,
@@ -63,4 +66,18 @@ func (s *APIServer) Run() error{
 
 func (s *APIServer) Shutdown() error{
 	return s.server.Shutdown(context.TODO())
+}
+
+
+func (s *APIServer) injectDependencies(router *chi.Mux){
+	//create respositories
+
+	//create services
+	authService := appauth.NewAuthService()
+
+	//create handlers
+	authHandler := handlers.NewAuthHandler(authService)
+
+	//registering routes
+	authHandler.RegisterRoutes(router)
 }
