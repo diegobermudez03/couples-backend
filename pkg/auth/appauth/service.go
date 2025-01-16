@@ -19,18 +19,21 @@ var (
 	errorHashingPassword = errors.New("the password couldnt be hashed")
 	errorJWTToken = errors.New("an error ocurred creating the JWT token")
 	errorEmailAlreadyUsed = errors.New("the email already has an account associated")
+	errorIncorrectPassword = errors.New("incorrect password")
 )
 
 type AuthServiceImpl struct {
 	authRepo 			domainauth.AuthRepository
 	accessTokenLife 	int64
+	refreshTokenLife 	int64
 	jwtSecret 			string
 }
 
-func NewAuthService(authRepo domainauth.AuthRepository, accessTokenLife int64) domainauth.AuthService{
+func NewAuthService(authRepo domainauth.AuthRepository, accessTokenLife int64, refreshTokenLife int64) domainauth.AuthService{
 	return &AuthServiceImpl{
 		authRepo: authRepo,
 		accessTokenLife: accessTokenLife,
+		refreshTokenLife : refreshTokenLife,
 	}
 }
 
@@ -70,6 +73,20 @@ func(s *AuthServiceImpl) RegisterUser(ctx context.Context, email string, passwor
 	return s.createSession(ctx, userId, device, os)
 }
 
+
+func (s *AuthServiceImpl) LoginUser(ctx context.Context, email string, password string, device string, os string) (string, error){
+	user, err := s.authRepo.GetUserByEmail(ctx, email)
+	if err != nil{
+		return "", err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(*user.Hash), []byte(password)); err != nil{
+		return "", errorIncorrectPassword
+	}
+
+	return s.createSession(ctx, user.Id, device, os)
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 //								private functions
@@ -92,7 +109,7 @@ func (s *AuthServiceImpl) createSession(ctx context.Context, userId uuid.UUID, d
 		token, 
 		device, 
 		os,
-		time.Now().Add(time.Hour* 8760),
+		time.Now().Add(time.Duration(s.refreshTokenLife) * time.Hour),
 	)
 	if err != nil{
 		return "", err 

@@ -16,6 +16,7 @@ type AccessClaims struct{
 
 type AuthService interface {
 	RegisterUser(ctx context.Context, email string, password string, device string, os string) (refreshToken string, err error)
+	LoginUser(ctx context.Context, email string, password string, device string, os string) (refreshToken string, err error)
 }
 
 type AuthRepository interface {

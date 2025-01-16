@@ -13,6 +13,7 @@ type Config struct {
 
 type AuthConfig struct{
 	AccessTokenLife 	int64
+	RefreshTokenLife 	int64
 	JwtSecret 			string
 }
 
@@ -32,6 +33,7 @@ func NewAuthConfig() *AuthConfig{
 	return &AuthConfig{
 		AccessTokenLife: getEnvAsInt64("ACCESS_TOKEN_LIFE", 3600),
 		JwtSecret: getEnv("JWT_SECRET", "secret"),
+		RefreshTokenLife: getEnvAsInt64("REFRESH_TOKEN_LIFE", 1000000000),
 	}
 }
 

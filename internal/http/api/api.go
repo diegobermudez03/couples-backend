@@ -78,7 +78,7 @@ func (s *APIServer) injectDependencies(router *chi.Mux){
 	authRepository := repoauth.NewAuthPostgresRepo(s.db)
 
 	//create services
-	authService := appauth.NewAuthService(authRepository, s.config.AuthConfig.AccessTokenLife)
+	authService := appauth.NewAuthService(authRepository, s.config.AuthConfig.AccessTokenLife, s.config.AuthConfig.RefreshTokenLife)
 
 	//create handlers
 	authHandler := handlers.NewAuthHandler(authService)

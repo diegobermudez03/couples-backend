@@ -23,6 +23,7 @@ func (h *AuthHandler) RegisterRoutes(r *chi.Mux){
 	r.Mount("/auth", router)
 
 	router.Post("/register", h.registerEndpoint)
+	router.Get("/login", h.LoginEndpoint)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -31,6 +32,7 @@ func (h *AuthHandler) RegisterRoutes(r *chi.Mux){
 ///////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////
 
+///// DTOS
 type registerDTO struct{
 	Email 		string	`json:"email" validate:"email"`
 	Password 	string 	`json:"password"`
@@ -38,6 +40,15 @@ type registerDTO struct{
 	Os			string	`json:"os" validate:"required"`
 }
 
+type loginDTO struct{
+	Email 		string	`json:"email" validate:"email"`
+	Password 	string 	`json:"password"`
+	Device 		string 	`json:"device" validate:"required"`
+	Os			string	`json:"os" validate:"required"`
+}
+
+
+///////////////////////////////// HANDLERS 
 
 func (h *AuthHandler) registerEndpoint(w http.ResponseWriter, r *http.Request){
 	// extract payload
@@ -68,5 +79,27 @@ func (h *AuthHandler) registerEndpoint(w http.ResponseWriter, r *http.Request){
 			"refreshToken" : refreshToken,
 		},
 	)
-
 }
+
+
+func (h *AuthHandler) LoginEndpoint(w http.ResponseWriter, r *http.Request){
+	dto := loginDTO{}
+	if err := utils.ReadJSON(r, &dto); err != nil{
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return 
+	}
+
+	refreshToken, err := h.authService.LoginUser(r.Context(), dto.Email, dto.Password, dto.Device, dto.Os)
+	if err != nil{
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return 
+	}
+	utils.WriteJSON(
+		w, 
+		http.StatusOK, 
+		map[string]any{
+			"refreshToken" : refreshToken,
+		},
+	)
+}
+
