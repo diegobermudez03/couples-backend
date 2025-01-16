@@ -1,6 +1,7 @@
 package appauth
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
@@ -17,6 +18,7 @@ var (
 	errorInsecurePassword = errors.New("the password isnt secure enough")
 	errorHashingPassword = errors.New("the password couldnt be hashed")
 	errorJWTToken = errors.New("an error ocurred creating the JWT token")
+	errorEmailAlreadyUsed = errors.New("the email already has an account associated")
 )
 
 type AuthServiceImpl struct {
@@ -33,13 +35,18 @@ func NewAuthService(authRepo domainauth.AuthRepository, accessTokenLife int64) d
 }
 
 
-func(s *AuthServiceImpl) RegisterUser(email string, password string, device string, os string) (string, error){
+func(s *AuthServiceImpl) RegisterUser(ctx context.Context, email string, password string, device string, os string) (string, error){
 	// data verifications
 	if num := len(password); num < 6 {
 		return "", errorInsecurePassword
 	}
 	if match, err := regexp.MatchString(`\d`, password); !match || err != nil {
 		return "", errorInsecurePassword
+	}
+
+	// confirm email uniqueness
+	if _, err := s.authRepo.GetUserByEmail(ctx, email); err == nil || !errors.Is(err, domainauth.ErrorNoUserFoundEmail){
+		return "", errorEmailAlreadyUsed
 	}
 
 	hashBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -50,6 +57,7 @@ func(s *AuthServiceImpl) RegisterUser(email string, password string, device stri
 	//create user auth
 	userId := uuid.New()
 	err = s.authRepo.CreateUserAuth(
+		ctx,
 		userId,
 		email,
 		string(hashBytes),
@@ -59,7 +67,7 @@ func(s *AuthServiceImpl) RegisterUser(email string, password string, device stri
 	}
 
 	//create the session
-	return s.createSession(userId, device, os)
+	return s.createSession(ctx, userId, device, os)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +77,7 @@ func(s *AuthServiceImpl) RegisterUser(email string, password string, device stri
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-func (s *AuthServiceImpl) createSession(userId uuid.UUID, device string, os string) (string, error){
+func (s *AuthServiceImpl) createSession(ctx context.Context, userId uuid.UUID, device string, os string) (string, error){
 	randomBytes := make([]byte, 32)
 	_, err := rand.Read(randomBytes) 
 	if err != nil{
@@ -78,6 +86,7 @@ func (s *AuthServiceImpl) createSession(userId uuid.UUID, device string, os stri
 	token := base64.URLEncoding.EncodeToString(randomBytes)
 
 	err = s.authRepo.CreateSession(
+		ctx, 
 		uuid.New(),
 		userId,
 		token, 

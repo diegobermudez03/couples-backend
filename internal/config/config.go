@@ -8,6 +8,7 @@ import (
 type Config struct {
 	Port 		string
 	AuthConfig 	*AuthConfig
+	PostgresConfig *PostgresConfig
 }
 
 type AuthConfig struct{
@@ -15,10 +16,15 @@ type AuthConfig struct{
 	JwtSecret 			string
 }
 
+type PostgresConfig struct{
+	Address 		string
+}
+
 func NewConfig() *Config {
 	return &Config{
 		Port: getEnv("PORT", ":8081"),
 		AuthConfig: NewAuthConfig(),
+		PostgresConfig: NewPostgresConfig(),
 	}
 }
 
@@ -29,7 +35,11 @@ func NewAuthConfig() *AuthConfig{
 	}
 }
 
-
+func NewPostgresConfig() *PostgresConfig{
+	return &PostgresConfig{
+		Address: getEnv("POSTGRES_DB", ""),
+	}
+}
 
 /////////////////////////////////////////////////
 

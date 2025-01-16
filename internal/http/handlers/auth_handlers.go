@@ -49,6 +49,7 @@ func (h *AuthHandler) registerEndpoint(w http.ResponseWriter, r *http.Request){
 
 	// call service
 	refreshToken, err := h.authService.RegisterUser(
+		r.Context(),
 		payload.Email,
 		payload.Password,
 		payload.Device,

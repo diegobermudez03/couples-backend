@@ -1,6 +1,7 @@
 package domainauth
 
 import (
+	"context"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -14,10 +15,11 @@ type AccessClaims struct{
 }
 
 type AuthService interface {
-	RegisterUser(email string, password string, device string, os string) (refreshToken string, err error)
+	RegisterUser(ctx context.Context, email string, password string, device string, os string) (refreshToken string, err error)
 }
 
 type AuthRepository interface {
-	CreateUserAuth(id uuid.UUID, email string, hash string) error
-	CreateSession(id uuid.UUID, userId uuid.UUID, token string, device string, os string, expiresAt time.Time) error
+	CreateUserAuth(ctx context.Context, id uuid.UUID, email string, hash string) error
+	CreateSession(ctx context.Context, id uuid.UUID, userId uuid.UUID, token string, device string, os string, expiresAt time.Time) error
+	GetUserByEmail(ctx context.Context, email string) (*UserAuthModel, error)
 }

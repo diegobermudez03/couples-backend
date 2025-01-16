@@ -1,0 +1,5 @@
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS couples;
+DROP TABLE IF EXISTS temp_couples;
+DROP TABLE IF EXISTS points;
+DROP TABLE IF EXISTS couple_levels;

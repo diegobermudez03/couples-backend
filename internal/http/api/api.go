@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"time"
 
@@ -17,11 +18,13 @@ import (
 type APIServer struct {
 	server 	http.Server
 	config  *config.Config
+	db 		*sql.DB
 }
 
-func NewAPIServer(config *config.Config) *APIServer {
+func NewAPIServer(config *config.Config, db *sql.DB) *APIServer {
 	return &APIServer{
 		config: config,
+		db: db,
 	}
 }
 
@@ -72,7 +75,7 @@ func (s *APIServer) Shutdown() error{
 
 func (s *APIServer) injectDependencies(router *chi.Mux){
 	//create respositories
-	authRepository := repoauth.NewAuthPostgresRepo()
+	authRepository := repoauth.NewAuthPostgresRepo(s.db)
 
 	//create services
 	authService := appauth.NewAuthService(authRepository, s.config.AuthConfig.AccessTokenLife)
