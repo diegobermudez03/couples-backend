@@ -12,3 +12,7 @@ type UsersService interface {
 
 	CheckUserExistance(ctx context.Context, token string) error
 }
+
+type UsersRepo interface{
+	CreateUser(ctx context.Context, user *UserModel) error
+}

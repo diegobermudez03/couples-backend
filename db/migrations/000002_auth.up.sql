@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS users_auth(
 CREATE TABLE IF NOT EXISTS sessions(
     id                  UUID PRIMARY KEY,
     token               TEXT NOT NULL,
-    device              TEXT NOT NULL,
-    os                  TEXT NOT NULL,
+    device              TEXT,
+    os                  TEXT,
     expires_at          TIMESTAMP NOT NULL,
     created_at          TIMESTAMP NOT NULL,
     last_used           TIMESTAMP NOT NULL,

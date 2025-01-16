@@ -18,6 +18,7 @@ var (
 	errorNoSessionFound = errors.New("no session found")
 	errorRetrievingSession = errors.New("there was an error retrieving the session")
 	errorNoUserFoundId = errors.New("no user found with the Id")
+	errorVinculatingAccount = errors.New("there was an error vinculating the account")
 )
 
 type AuthPostgresRepo struct {
@@ -48,7 +49,7 @@ func (r *AuthPostgresRepo) CreateUserAuth(ctx context.Context, id uuid.UUID, ema
 	return nil
 }
 
-func (r *AuthPostgresRepo) CreateSession(ctx context.Context,  id uuid.UUID, userId uuid.UUID, token string, device string, os string, expiresAt time.Time) error{
+func (r *AuthPostgresRepo) CreateSession(ctx context.Context,  id uuid.UUID, userId uuid.UUID, token string, device *string, os *string, expiresAt time.Time) error{
 	result, err := r.db.ExecContext(
 		ctx,
 		`INSERT INTO sessions(id, token, device, os, expires_at, created_at, last_used, user_auth_id)
@@ -118,4 +119,36 @@ func (r *AuthPostgresRepo) readUser(row *sql.Row, caseError error) (*auth.UserAu
 		return nil, errorRetrievingUserAuth
 	}
 	return model, nil
+}
+
+
+func (r *AuthPostgresRepo) CreateEmptyUser(ctx context.Context, id uuid.UUID, userId uuid.UUID) error{
+	result, err := r.db.ExecContext(
+		ctx, 
+		`INSERT INTO users_auth(id, user_id, created_at) VALUES($1, $2, $3)`,
+		id, userId, time.Now(),
+	)
+	if err != nil{
+		return errorCreatingUser
+	}
+	if num, err := result.RowsAffected(); num == 0 || err != nil{
+		return errorCreatingUser
+	}
+	return nil
+}
+
+func (r *AuthPostgresRepo) UpdateAuthUserId(ctx context.Context, authId uuid.UUID, userId uuid.UUID) error{
+	result, err := r.db.ExecContext(
+		ctx, 
+		`UPDATE users_auth SET user_id = $1 WHERE id = $2`,
+		userId, authId,
+	)
+	if err != nil{
+		log.Print(err)
+		return errorVinculatingAccount
+	}
+	if num, err := result.RowsAffected(); num != 1 || err != nil{
+		return errorVinculatingAccount
+	}
+	return nil
 }

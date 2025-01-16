@@ -70,7 +70,7 @@ func(s *AuthServiceImpl) RegisterUser(ctx context.Context, email string, passwor
 	}
 
 	//create the session
-	return s.createSession(ctx, userId, device, os)
+	return s.createSession(ctx, userId, &device, &os)
 }
 
 
@@ -84,7 +84,7 @@ func (s *AuthServiceImpl) LoginUser(ctx context.Context, email string, password 
 		return "", errorIncorrectPassword
 	}
 
-	return s.createSession(ctx, user.Id, device, os)
+	return s.createSession(ctx, user.Id, &device, &os)
 }
 
 func (s *AuthServiceImpl) GetUserIdFromSession(ctx context.Context, token string) (*uuid.UUID, error){
@@ -99,6 +99,25 @@ func (s *AuthServiceImpl) GetUserIdFromSession(ctx context.Context, token string
 	return user.UserId, nil
 }
 
+func (s *AuthServiceImpl) CreateAnonymousSession(ctx context.Context, userId uuid.UUID) (string, error){
+	AuthId := uuid.New()
+	if err := s.authRepo.CreateEmptyUser(ctx, AuthId, userId); err != nil{
+		return "", err 
+	}
+	return s.createSession(ctx, AuthId, nil, nil)
+}
+
+func (s *AuthServiceImpl) VinculateAuthWithUser(ctx context.Context, token string, userId uuid.UUID) error{
+	session, err := s.authRepo.GetSessionByToken(ctx, token)
+	if err != nil{
+		return err 
+	}
+	if err := s.authRepo.UpdateAuthUserId(ctx, session.UserAuthId, userId); err != nil{
+		return err 
+	}
+	return nil
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 //								private functions
@@ -106,7 +125,7 @@ func (s *AuthServiceImpl) GetUserIdFromSession(ctx context.Context, token string
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-func (s *AuthServiceImpl) createSession(ctx context.Context, userId uuid.UUID, device string, os string) (string, error){
+func (s *AuthServiceImpl) createSession(ctx context.Context, userId uuid.UUID, device *string, os *string) (string, error){
 	randomBytes := make([]byte, 32)
 	_, err := rand.Read(randomBytes) 
 	if err != nil{

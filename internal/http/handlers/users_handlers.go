@@ -41,7 +41,7 @@ type createUserDTO struct{
 	LastName 		string 	`json:"lastName" validate:"required"`
 	Gender 			string	`json:"gender" validate:"required"`
 	BirthDate 		int 	`json:"birthDate" validate:"required"`
-	CountryCode 	string 	`json:"coutryCode" validate:"required"`
+	CountryCode 	string 	`json:"countryCode" validate:"required"`
 	LanguageCode 	string 	`json:"languageCode" validate:"required"`
 }
 
