@@ -10,6 +10,7 @@ import (
 	"github.com/diegobermudez03/couples-backend/internal/http/handlers"
 	"github.com/diegobermudez03/couples-backend/pkg/auth/appauth"
 	"github.com/diegobermudez03/couples-backend/pkg/auth/repoauth"
+	"github.com/diegobermudez03/couples-backend/pkg/users/appusers"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -79,10 +80,13 @@ func (s *APIServer) injectDependencies(router *chi.Mux){
 
 	//create services
 	authService := appauth.NewAuthService(authRepository, s.config.AuthConfig.AccessTokenLife, s.config.AuthConfig.RefreshTokenLife)
+	usersService := appusers.NewUsersServiceImpl(authService)
 
 	//create handlers
 	authHandler := handlers.NewAuthHandler(authService)
+	usersHandler := handlers.NewUsersHandler(usersService)
 
 	//registering routes
 	authHandler.RegisterRoutes(router)
+	usersHandler.RegisterRoutes(router)
 }

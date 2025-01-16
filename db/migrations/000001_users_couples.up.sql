@@ -5,9 +5,9 @@ CREATE TABLE IF NOT EXISTS users (
     gender          TEXT NOT NULL,
     birth_date      DATE NOT NULL,
     created_at      TIMESTAMP  NOT NULL,
-    language        TEXT NOT NULL,
+    language_code   VARCHAR(2) NOT NULL,
     active          BOOLEAN NOT NULL,
-    country_id      UUID REFERENCES countries(id) NOT NULL
+    country_code    VARCHAR(2) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS couples(

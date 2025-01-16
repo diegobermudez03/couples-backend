@@ -1,4 +1,4 @@
-package domainauth
+package auth
 
 import "errors"
 

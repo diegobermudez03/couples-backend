@@ -4,15 +4,15 @@ import (
 	"net/http"
 
 	"github.com/diegobermudez03/couples-backend/internal/utils"
-	"github.com/diegobermudez03/couples-backend/pkg/auth/domainauth"
+	"github.com/diegobermudez03/couples-backend/pkg/auth"
 	"github.com/go-chi/chi/v5"
 )
 
 type AuthHandler struct {
-	authService 	domainauth.AuthService
+	authService 	auth.AuthService
 }
 
-func NewAuthHandler(authService domainauth.AuthService) *AuthHandler {
+func NewAuthHandler(authService auth.AuthService) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
 	}

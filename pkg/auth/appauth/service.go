@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/diegobermudez03/couples-backend/pkg/auth/domainauth"
+	"github.com/diegobermudez03/couples-backend/pkg/auth"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -23,13 +23,13 @@ var (
 )
 
 type AuthServiceImpl struct {
-	authRepo 			domainauth.AuthRepository
+	authRepo 			auth.AuthRepository
 	accessTokenLife 	int64
 	refreshTokenLife 	int64
 	jwtSecret 			string
 }
 
-func NewAuthService(authRepo domainauth.AuthRepository, accessTokenLife int64, refreshTokenLife int64) domainauth.AuthService{
+func NewAuthService(authRepo auth.AuthRepository, accessTokenLife int64, refreshTokenLife int64) auth.AuthService{
 	return &AuthServiceImpl{
 		authRepo: authRepo,
 		accessTokenLife: accessTokenLife,
@@ -48,7 +48,7 @@ func(s *AuthServiceImpl) RegisterUser(ctx context.Context, email string, passwor
 	}
 
 	// confirm email uniqueness
-	if _, err := s.authRepo.GetUserByEmail(ctx, email); err == nil || !errors.Is(err, domainauth.ErrorNoUserFoundEmail){
+	if _, err := s.authRepo.GetUserByEmail(ctx, email); err == nil || !errors.Is(err, auth.ErrorNoUserFoundEmail){
 		return "", errorEmailAlreadyUsed
 	}
 
@@ -87,6 +87,18 @@ func (s *AuthServiceImpl) LoginUser(ctx context.Context, email string, password 
 	return s.createSession(ctx, user.Id, device, os)
 }
 
+func (s *AuthServiceImpl) GetUserIdFromSession(ctx context.Context, token string) (*uuid.UUID, error){
+	session, err := s.authRepo.GetSessionByToken(ctx, token)
+	if err != nil{
+		return nil, err 
+	}
+	user, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
+	if err != nil{
+		return nil, err 
+	}
+	return user.UserId, nil
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 //								private functions
@@ -119,7 +131,7 @@ func (s *AuthServiceImpl) createSession(ctx context.Context, userId uuid.UUID, d
 
 
 func (s *AuthServiceImpl) createAccessToken(userId uuid.UUID, coupleId uuid.UUID) (string, error){
-	claims := domainauth.AccessClaims{
+	claims := auth.AccessClaims{
 		UserId: userId,
 		CoupleId: coupleId,
 		RegisteredClaims: jwt.RegisteredClaims{

@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/diegobermudez03/couples-backend/pkg/auth/domainauth"
+	"github.com/diegobermudez03/couples-backend/pkg/auth"
 	"github.com/google/uuid"
 )
 
@@ -15,13 +15,16 @@ var (
 	errorCreatingUser = errors.New("there was an error creating the account for the user")
 	errorCreatingSession = errors.New("there was an error creating the session for the user")
 	errorRetrievingUserAuth = errors.New("there was an error retrieving the user auth")
+	errorNoSessionFound = errors.New("no session found")
+	errorRetrievingSession = errors.New("there was an error retrieving the session")
+	errorNoUserFoundId = errors.New("no user found with the Id")
 )
 
 type AuthPostgresRepo struct {
 	db 		*sql.DB
 }
 
-func NewAuthPostgresRepo(db *sql.DB) domainauth.AuthRepository{
+func NewAuthPostgresRepo(db *sql.DB) auth.AuthRepository{
 	return &AuthPostgresRepo{
 		db: db,
 	}
@@ -63,20 +66,52 @@ func (r *AuthPostgresRepo) CreateSession(ctx context.Context,  id uuid.UUID, use
 	return nil
 }
 
-func (r *AuthPostgresRepo) GetUserByEmail(ctx context.Context, email string) (*domainauth.UserAuthModel, error){
+func (r *AuthPostgresRepo) GetUserByEmail(ctx context.Context, email string) (*auth.UserAuthModel, error){
 	row := r.db.QueryRowContext(
 		ctx,
 		`SELECT id, email, hash, oauth_provider, oauth_id, created_at, user_id
 		FROM users_auth WHERE email = $1`,
 		email,
 	)
+	return r.readUser(row, auth.ErrorNoUserFoundEmail)
+}
 
-	model := new(domainauth.UserAuthModel)
-	*model = domainauth.UserAuthModel{}
+func (r *AuthPostgresRepo) GetSessionByToken(ctx context.Context, token string) (*auth.SessionModel, error){
+	row := r.db.QueryRowContext(
+		ctx,
+		`SELECT id, token, device, os, expires_at, created_at, last_used, user_auth_id
+		FROM sessions WHERE token = $1`,
+		token,
+	)
+	model := new(auth.SessionModel)
 
+	err := row.Scan(&model.Id, &model.Token, &model.Device, &model.Os, &model.ExpiresAt, &model.CreatedAt, &model.LastUsed, &model.UserAuthId)
+	if err != nil && errors.Is(err, sql.ErrNoRows){
+		return nil, errorNoSessionFound
+	}else if err != nil{
+		return nil, errorRetrievingSession
+	}
+
+	return model, nil
+}
+
+
+func (r *AuthPostgresRepo) GetUserById(ctx context.Context, id uuid.UUID) (*auth.UserAuthModel, error){
+	row := r.db.QueryRowContext(
+		ctx,
+		`SELECT id, email, hash, oauth_provider, oauth_id, created_at, user_id
+		FROM users_auth WHERE id = $1`,
+		id,
+	)
+	return r.readUser(row, errorNoUserFoundId)
+}
+
+
+func (r *AuthPostgresRepo) readUser(row *sql.Row, caseError error) (*auth.UserAuthModel, error){
+	model := new(auth.UserAuthModel)
 	err := row.Scan(&model.Id, &model.Email, &model.Hash, &model.OauthProvider, &model.OauthId, &model.CreatedAt, &model.UserId)
 	if err == sql.ErrNoRows{
-		return nil, domainauth.ErrorNoUserFoundEmail
+		return nil, caseError
 	}
 	if err != nil{
 		log.Print(err)
