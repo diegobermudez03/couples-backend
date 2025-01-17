@@ -21,7 +21,9 @@ var (
 	errorJWTToken = errors.New("an error ocurred creating the JWT token")
 	errorEmailAlreadyUsed = errors.New("the email already has an account associated")
 	errorIncorrectPassword = errors.New("incorrect password")
+	errorUserAlreadyHasUser = errors.New("there's already an user created")
 )
+
 
 type AuthServiceImpl struct {
 	authRepo 			auth.AuthRepository
@@ -90,30 +92,6 @@ func (s *AuthServiceImpl) LoginUserAuth(ctx context.Context, email string, passw
 	return s.createSession(ctx, user.Id, &device, &os)
 }
 
-func (s *AuthServiceImpl) GetUserIdFromSession(ctx context.Context, token string) (*uuid.UUID, error){
-	session, err := s.authRepo.GetSessionByToken(ctx, token)
-	if err != nil{
-		return nil, err 
-	}
-	user, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
-	if err != nil{
-		return nil, err 
-	}
-	return user.UserId, nil
-}
-
-func (s *AuthServiceImpl) VinculateAuthWithUser(ctx context.Context, token string, userId uuid.UUID) error{
-	session, err := s.authRepo.GetSessionByToken(ctx, token)
-	if err != nil{
-		return err 
-	}
-	if err := s.authRepo.UpdateAuthUserId(ctx, session.UserAuthId, userId); err != nil{
-		return err 
-	}
-	return nil
-}
-
-
 func (s *AuthServiceImpl) CloseSession(ctx context.Context, token string) error{
 	session, err := s.authRepo.GetSessionByToken(ctx, token)
 	if err != nil{
@@ -141,7 +119,7 @@ func (s *AuthServiceImpl) CloseSession(ctx context.Context, token string) error{
 }
 
 func (s *AuthServiceImpl) CreateTempCouple(ctx context.Context, token string, startDate int) (int, error){
-	userId, err := s.GetUserIdFromSession(ctx, token)
+	userId, err := s.getUserIdFromSession(ctx, token)
 	if err != nil{
 		return 0, err  
 	}
@@ -154,6 +132,12 @@ func (s *AuthServiceImpl) CreateTempCouple(ctx context.Context, token string, st
 func (s *AuthServiceImpl) CreateUser(ctx context.Context, token, firstName, lastName, gender, countryCode, languageCode string,birthDate int,) (string, error){
 	//check token if its validate
 	session, _ := s.authRepo.GetSessionByToken(ctx, token)
+	if session != nil{
+		userAuth, _ := s.authRepo.GetUserById(ctx, session.UserAuthId)
+		if userAuth != nil && userAuth.UserId != nil{
+			return "", errorUserAlreadyHasUser
+		}
+	}
 
 	// create user with users service (receives the userId)
 	userId,  err := s.usersService.CreateUser(ctx, firstName, lastName, gender, countryCode, languageCode, birthDate)
@@ -176,6 +160,33 @@ func (s *AuthServiceImpl) CreateUser(ctx context.Context, token, firstName, last
 	return token, nil
 }
 
+
+func (s *AuthServiceImpl) CheckUserAuthStatus(ctx context.Context, token string) (string, error){
+	userId, err := s.getUserIdFromSession(ctx, token)
+	if err != nil{
+		return "", err
+	}
+	if userId == nil{
+		return auth.StatusNoUserCreated, nil 
+	}
+	couple, _ := s.usersService.GetCoupleFromUser(ctx, *userId)
+	if couple == nil{
+		return auth.StatusUserCreated, nil 
+	}
+	return auth.StatusCoupleCreated, nil
+
+}
+
+func (s *AuthServiceImpl)  ConnectCouple(ctx context.Context, token string, code int) error{
+	userId, err := s.getUserIdFromSession(ctx, token)
+	if err != nil{
+		return err
+	}
+	if err := s.usersService.ConnectCouple(ctx, *userId, code); err != nil{
+		return err
+	}
+	return nil
+}
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -223,4 +234,16 @@ func (s *AuthServiceImpl) createAccessToken(userId uuid.UUID, coupleId uuid.UUID
 		return "", errorJWTToken
 	}
 	return tokenString, nil
+}
+
+func (s *AuthServiceImpl) getUserIdFromSession(ctx context.Context, token string) (*uuid.UUID, error){
+	session, err := s.authRepo.GetSessionByToken(ctx, token)
+	if err != nil{
+		return nil, err 
+	}
+	user, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
+	if err != nil{
+		return nil, err 
+	}
+	return user.UserId, nil
 }

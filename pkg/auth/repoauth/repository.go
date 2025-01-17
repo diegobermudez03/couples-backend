@@ -21,6 +21,8 @@ var (
 	errorVinculatingAccount = errors.New("there was an error vinculating the account")
 	errorDeletingSession = errors.New("there was an error deleting the session")
 	errorDeletingUserAuth = errors.New("there was an error deleting the user auth")
+	errorsNoSessionToDelete = errors.New("there's no session to delete")
+	errorNoUserAuthToDelete = errors.New("there's no user auth to delete")
 )
 
 type AuthPostgresRepo struct {
@@ -41,11 +43,9 @@ func (r *AuthPostgresRepo) CreateUserAuth(ctx context.Context, id uuid.UUID, ema
 		id, email, hash, time.Now(),
 	)
 	if err != nil{
-		log.Print(err)
 		return errorCreatingUser
 	}
-	if num, err := result.RowsAffected(); err != nil || num == 0{
-		log.Print(err)
+	if num, _ := result.RowsAffected();num == 0{
 		return errorCreatingUser
 	}
 	return nil
@@ -59,11 +59,9 @@ func (r *AuthPostgresRepo) CreateSession(ctx context.Context,  id uuid.UUID, use
 		id, token, device, os, expiresAt, time.Now(), time.Now(), userId,
 	)
 	if err != nil{
-		log.Print(err)
 		return errorCreatingSession
 	}
-	if num, err := result.RowsAffected(); err != nil || num == 0{
-		log.Print(err)
+	if num, _ := result.RowsAffected(); num == 0{
 		return errorCreatingSession
 	}
 	return nil
@@ -89,7 +87,7 @@ func (r *AuthPostgresRepo) GetSessionByToken(ctx context.Context, token string) 
 	model := new(auth.SessionModel)
 
 	err := row.Scan(&model.Id, &model.Token, &model.Device, &model.Os, &model.ExpiresAt, &model.CreatedAt, &model.LastUsed, &model.UserAuthId)
-	if err != nil && errors.Is(err, sql.ErrNoRows){
+	if errors.Is(err, sql.ErrNoRows){
 		return nil, errorNoSessionFound
 	}else if err != nil{
 		return nil, errorRetrievingSession
@@ -118,7 +116,7 @@ func (r *AuthPostgresRepo) CreateEmptyUser(ctx context.Context, id uuid.UUID, us
 	if err != nil{
 		return errorCreatingUser
 	}
-	if num, err := result.RowsAffected(); num == 0 || err != nil{
+	if num, _ := result.RowsAffected(); num == 0{
 		return errorCreatingUser
 	}
 	return nil
@@ -134,7 +132,7 @@ func (r *AuthPostgresRepo) UpdateAuthUserId(ctx context.Context, authId uuid.UUI
 		log.Print(err)
 		return errorVinculatingAccount
 	}
-	if num, err := result.RowsAffected(); num != 1 || err != nil{
+	if num, _ := result.RowsAffected(); num != 1{
 		return errorVinculatingAccount
 	}
 	return nil
@@ -149,8 +147,8 @@ func (r *AuthPostgresRepo) DeleteSessionById(ctx context.Context, sessionId uuid
 	if err != nil{
 		return errorDeletingSession
 	}
-	if num, err := result.RowsAffected(); num != 1 || err != nil{
-		return errorDeletingSession
+	if num, _ := result.RowsAffected(); num == 0{
+		return errorsNoSessionToDelete
 	}
 	return nil
 }
@@ -163,8 +161,8 @@ func (r *AuthPostgresRepo) DeleteUserAuthById(ctx context.Context, authId uuid.U
 	if err != nil{
 		return errorDeletingUserAuth
 	}
-	if num, err := result.RowsAffected(); num != 1 || err != nil{
-		return errorDeletingUserAuth
+	if num, _ := result.RowsAffected(); num == 0{
+		return errorNoUserAuthToDelete
 	}
 	return nil
 }

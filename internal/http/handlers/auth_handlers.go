@@ -148,7 +148,6 @@ func (h *AuthHandler) createUserEndpoint(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-
 func (h *AuthHandler) checkExistanceEndpoint(w http.ResponseWriter, r *http.Request){
 	token := r.Header.Get("token")
 	if token == ""{
@@ -156,14 +155,14 @@ func (h *AuthHandler) checkExistanceEndpoint(w http.ResponseWriter, r *http.Requ
 		return 
 	}
 
-	if id, err := h.authService.GetUserIdFromSession(r.Context(), token); err == nil && id == nil{
-		utils.WriteError(w, http.StatusBadRequest, errors.New("no user associated"))
-		return 
-	}else if err != nil{
-		utils.WriteError(w, http.StatusBadRequest, err)
+	status, err := h.authService.CheckUserAuthStatus(r.Context(), token)
+	if err != nil{
+		utils.WriteError(w, http.StatusInternalServerError, err)
 		return 
 	}
-	utils.WriteJSON(w, http.StatusOK, nil)
+	utils.WriteJSON(w, http.StatusOK, map[string]string{
+		"status" : status,
+	})
 }
 
 func (h *AuthHandler) logoutEndpoint(w http.ResponseWriter, r *http.Request){
@@ -224,4 +223,11 @@ func (h *AuthHandler) connectWithCoupleEndpoint(w http.ResponseWriter, r *http.R
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return 
 	}
+
+	if err := h.authService.ConnectCouple(r.Context(), token, payload.Code); err != nil{
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return 
+	}
+	utils.WriteJSON(w, http.StatusCreated, nil)
 }
+

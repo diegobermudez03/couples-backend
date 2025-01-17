@@ -27,4 +27,20 @@ type TempCoupleModel struct{
 	UpdatedAt 	time.Time
 }
 
-type CoupleModel struct{}
+type CoupleModel struct{
+	Id 		uuid.UUID
+	HeId 	uuid.UUID
+	SheId 	uuid.UUID
+	RelationStart 	time.Time 
+	EndDate 		*time.Time
+}
+
+
+type PointsModel struct{
+	Id 			uuid.UUID
+	StartingDay 	time.Time
+	EndingDay 	time.Time
+	Points 		int 
+	CoupleId 	*uuid.UUID
+	UserId 		*uuid.UUID
+}

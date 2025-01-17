@@ -14,7 +14,8 @@ type UsersService interface {
 	) (*uuid.UUID, error) 
 	CreateTempCouple(ctx context.Context, userId uuid.UUID, startDate int) (int, error)
 	DeleteUserById(ctx context.Context, userId uuid.UUID) error
-	//ConnectCouple(ctx context.Context, token string, code int) 
+	GetCoupleFromUser(ctx context.Context, userId uuid.UUID) (*CoupleModel, error)
+	ConnectCouple(ctx context.Context, userId uuid.UUID, code int) error
 }
 
 type UsersRepo interface{
@@ -26,4 +27,12 @@ type UsersRepo interface{
 	CreateTempCouple(ctx context.Context, tempCouple *TempCoupleModel) error
 	GetCoupleByUserId(ctx context.Context, userId uuid.UUID) (*CoupleModel, error)
 	DeleteTempCoupleById(ctx context.Context, id uuid.UUID) error
+	GetUserById(ctx context.Context, userId uuid.UUID) (*UserModel, error)
+	CreateCouple(ctx context.Context, couple *CoupleModel) error
+	CreateCouplePoints(ctx context.Context, points *PointsModel) error
 }
+
+
+
+///////////////////////// POINTS
+const CouplePointsForConnecting = 50

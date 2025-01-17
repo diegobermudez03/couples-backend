@@ -12,15 +12,23 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	maleGender = "male"
+	femaleGender = "female"
+)
+
 /////////  HELPERS
 var genders = map[string]bool{
-	"male" : true,
-	"female" : true,
+	maleGender : true,
+	femaleGender : true,
 }
 
 var (
 	errorInvalidGender = errors.New("invalid gender")
 	errorTooYoung = errors.New("the user must be at least 12 years old")
+	errorUserAlreadyHasCouple = errors.New("the user already has a couple")
+	errorInvalidCode = errors.New("the couple code is invalid")
+	errorCantConnectWithYourself = errors.New("you cant connect with yourself")
 )
 ///////////////////////////////////////////
 
@@ -101,6 +109,10 @@ func (s *UsersServiceImpl) DeleteUserById(ctx context.Context, userId uuid.UUID)
 }
 
 func (s *UsersServiceImpl) CreateTempCouple(ctx context.Context, userId uuid.UUID, startDate int) (int, error){
+	couple, _ := s.usersRepo.GetCoupleByUserId(ctx, userId)
+	if couple != nil{
+		return 0, errorUserAlreadyHasCouple
+	}
 	var code int 
 	//unique code creation
 	for{
@@ -130,4 +142,76 @@ func (s *UsersServiceImpl) CreateTempCouple(ctx context.Context, userId uuid.UUI
 		return 0, err 
 	}
 	return code, nil
+}
+
+func (s *UsersServiceImpl) GetCoupleFromUser(ctx context.Context, userId uuid.UUID) (*users.CoupleModel, error){
+	return s.usersRepo.GetCoupleByUserId(ctx, userId)
+}
+
+
+func (s *UsersServiceImpl) ConnectCouple(ctx context.Context, userId uuid.UUID, code int) error{
+	// check that the user doesn't have a couple
+	coupleCheck, _ := s.usersRepo.GetCoupleByUserId(ctx, userId)
+	if coupleCheck != nil{
+		return errorUserAlreadyHasCouple
+	}
+	
+	tempCouple, _ := s.usersRepo.GetTempCoupleByCode(ctx, code)
+	if tempCouple == nil{
+		return errorInvalidCode
+	}
+	//check that the user isn't connecting with himself
+	if userId == tempCouple.UserId{
+		return errorCantConnectWithYourself
+	}
+	//create the couple
+	user1, err := s.usersRepo.GetUserById(ctx, userId)
+	if err != nil {
+		return err 
+	}
+	user2, err := s.usersRepo.GetUserById(ctx, tempCouple.UserId)
+	if err != nil {
+		return err 
+	}
+
+	var heId uuid.UUID
+	var sheId uuid.UUID
+	if user1.Gender == maleGender{
+		heId = user1.Id
+		sheId = user2.Id
+	}else{
+		sheId = user1.Id
+		heId = user2.Id
+	}
+
+	coupleId := uuid.New()
+	couple := &users.CoupleModel{
+		Id: coupleId,
+		RelationStart: tempCouple.StartDate,
+		HeId: heId,
+		SheId: sheId,
+	}
+	if err := s.usersRepo.CreateCouple(ctx, couple); err != nil{
+		return err 
+	}
+
+	//delete temp couples
+	s.usersRepo.DeleteTempCoupleById(ctx, heId)
+	s.usersRepo.DeleteTempCoupleById(ctx, sheId)
+
+	//create first points
+	err = s.usersRepo.CreateCouplePoints(
+		ctx,
+		&users.PointsModel{
+			Id: uuid.New(),
+			StartingDay: time.Now(),
+			EndingDay: time.Now().AddDate(0,0,7),
+			Points: users.CouplePointsForConnecting,
+			CoupleId: &coupleId,
+		},
+	)
+	if err != nil{
+		return err
+	}
+	return nil
 }
