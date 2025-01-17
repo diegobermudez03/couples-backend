@@ -20,6 +20,7 @@ type AuthService interface {
 	GetUserIdFromSession(ctx context.Context, token string) (*uuid.UUID, error)
 	CreateAnonymousSession(ctx context.Context, userId uuid.UUID) (refreshToken string, err error)
 	VinculateAuthWithUser(ctx context.Context, token string, userId uuid.UUID) error
+	CloseSession(ctx context.Context, token string) (userId *uuid.UUID, err error)
 }
 
 type AuthRepository interface {
@@ -30,4 +31,6 @@ type AuthRepository interface {
 	GetUserById(ctx context.Context, id uuid.UUID) (*UserAuthModel, error)
 	GetSessionByToken(ctx context.Context, token string) (*SessionModel, error)
 	UpdateAuthUserId(ctx context.Context, authId uuid.UUID, userId uuid.UUID) error
+	DeleteSessionById(ctx context.Context, sessionId uuid.UUID) error
+	DeleteUserAuthById(ctx context.Context, authId uuid.UUID) error
 }

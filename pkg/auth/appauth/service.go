@@ -118,6 +118,30 @@ func (s *AuthServiceImpl) VinculateAuthWithUser(ctx context.Context, token strin
 	return nil
 }
 
+
+func (s *AuthServiceImpl) CloseSession(ctx context.Context, token string) (userId *uuid.UUID, err error){
+	session, err := s.authRepo.GetSessionByToken(ctx, token)
+	if err != nil{
+		return nil, err
+	}
+	if err := s.authRepo.DeleteSessionById(ctx, session.Id); err != nil{
+		return nil, err
+	}
+	authUser, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
+	if err != nil{
+		return nil, err
+	}
+	//if it's an anonymous account then delete both the account and the user
+	if authUser.Email == nil && authUser.OauthProvider == nil{
+		if err := s.authRepo.DeleteUserAuthById(ctx, authUser.Id); err != nil{
+			return nil, err 
+		}
+		return authUser.UserId, nil
+	}
+	return nil, nil
+}
+
+
 /////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 //								private functions

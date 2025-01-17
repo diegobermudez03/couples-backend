@@ -19,6 +19,8 @@ var (
 	errorRetrievingSession = errors.New("there was an error retrieving the session")
 	errorNoUserFoundId = errors.New("no user found with the Id")
 	errorVinculatingAccount = errors.New("there was an error vinculating the account")
+	errorDeletingSession = errors.New("there was an error deleting the session")
+	errorDeletingUserAuth = errors.New("there was an error deleting the user auth")
 )
 
 type AuthPostgresRepo struct {
@@ -107,21 +109,6 @@ func (r *AuthPostgresRepo) GetUserById(ctx context.Context, id uuid.UUID) (*auth
 	return r.readUser(row, errorNoUserFoundId)
 }
 
-
-func (r *AuthPostgresRepo) readUser(row *sql.Row, caseError error) (*auth.UserAuthModel, error){
-	model := new(auth.UserAuthModel)
-	err := row.Scan(&model.Id, &model.Email, &model.Hash, &model.OauthProvider, &model.OauthId, &model.CreatedAt, &model.UserId)
-	if err == sql.ErrNoRows{
-		return nil, caseError
-	}
-	if err != nil{
-		log.Print(err)
-		return nil, errorRetrievingUserAuth
-	}
-	return model, nil
-}
-
-
 func (r *AuthPostgresRepo) CreateEmptyUser(ctx context.Context, id uuid.UUID, userId uuid.UUID) error{
 	result, err := r.db.ExecContext(
 		ctx, 
@@ -152,3 +139,50 @@ func (r *AuthPostgresRepo) UpdateAuthUserId(ctx context.Context, authId uuid.UUI
 	}
 	return nil
 }
+
+func (r *AuthPostgresRepo) DeleteSessionById(ctx context.Context, sessionId uuid.UUID) error{
+	result, err := r.db.ExecContext(
+		ctx, 
+		`DELETE FROM sessions WHERE id = $1`, 
+		sessionId,
+	)
+	if err != nil{
+		return errorDeletingSession
+	}
+	if num, err := result.RowsAffected(); num != 1 || err != nil{
+		return errorDeletingSession
+	}
+	return nil
+}
+func (r *AuthPostgresRepo) DeleteUserAuthById(ctx context.Context, authId uuid.UUID) error{
+	result, err := r.db.ExecContext(
+		ctx, 
+		`DELETE FROM users_auth WHERE id = $1`, 
+		authId,
+	)
+	if err != nil{
+		return errorDeletingUserAuth
+	}
+	if num, err := result.RowsAffected(); num != 1 || err != nil{
+		return errorDeletingUserAuth
+	}
+	return nil
+}
+
+
+///////////////////// HELPERS
+
+func (r *AuthPostgresRepo) readUser(row *sql.Row, caseError error) (*auth.UserAuthModel, error){
+	model := new(auth.UserAuthModel)
+	err := row.Scan(&model.Id, &model.Email, &model.Hash, &model.OauthProvider, &model.OauthId, &model.CreatedAt, &model.UserId)
+	if err == sql.ErrNoRows{
+		return nil, caseError
+	}
+	if err != nil{
+		log.Print(err)
+		return nil, errorRetrievingUserAuth
+	}
+	return model, nil
+}
+	
+	

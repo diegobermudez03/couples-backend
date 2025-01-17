@@ -6,11 +6,13 @@ import (
 	"errors"
 
 	"github.com/diegobermudez03/couples-backend/pkg/users"
+	"github.com/google/uuid"
 )
 
 
 var (
 	errorCreatingUser = errors.New("there was an error creating the user")
+	errorDeletingUser = errors.New("there was an error deleting the user")
 )
 
 type UsersPostgresRepo struct {
@@ -35,6 +37,22 @@ func (r *UsersPostgresRepo) CreateUser(ctx context.Context, user *users.UserMode
 	}
 	if num, err := result.RowsAffected(); num == 0 || err != nil{
 		return errorCreatingUser
+	}
+	return nil
+}
+
+func (r *UsersPostgresRepo) DeleteUser(ctx context.Context, userId uuid.UUID) error{
+	result, err := r.db.ExecContext(
+		ctx, 
+		`DELETE FROM users WHERE id = $1`,
+		userId,
+	)
+	if err != nil{
+		return errorDeletingUser
+	}
+
+	if num, err := result.RowsAffected(); num == 0 || err != nil{
+		return errorDeletingUser
 	}
 	return nil
 }

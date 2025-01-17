@@ -1,6 +1,10 @@
 package users
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 type UsersService interface {
 	CreateUser(
@@ -11,8 +15,11 @@ type UsersService interface {
 	) (string, error)
 
 	CheckUserExistance(ctx context.Context, token string) error
+
+	CloseOngoingSession(ctx context.Context, token string) error
 }
 
 type UsersRepo interface{
 	CreateUser(ctx context.Context, user *UserModel) error
+	DeleteUser(ctx context.Context, userId uuid.UUID) error
 }

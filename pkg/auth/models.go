@@ -19,8 +19,8 @@ type UserAuthModel struct {
 type SessionModel struct {
 	Id			uuid.UUID
 	Token 		string 
-	Device 		string 
-	Os 			string 
+	Device 		*string 
+	Os 			*string 
 	ExpiresAt 	time.Time
 	CreatedAt 	time.Time
 	LastUsed 	time.Time 

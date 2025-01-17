@@ -26,6 +26,7 @@ func (h *UsersHandler) RegisterRoutes(r *chi.Mux){
 
 	router.Post("/", h.createUserEndpoint)
 	router.Get("/exists", h.checkExistanceEndpoint)
+	router.Delete("/logout", h.logoutEndpoint)
 }
 
 
@@ -86,6 +87,20 @@ func (h *UsersHandler) checkExistanceEndpoint(w http.ResponseWriter, r *http.Req
 
 	if err := h.service.CheckUserExistance(r.Context(), token); err != nil{
 		utils.WriteError(w, http.StatusBadRequest, errors.New("no user associated"))
+		return 
+	}
+	utils.WriteJSON(w, http.StatusOK, nil)
+}
+
+func (h *UsersHandler) logoutEndpoint(w http.ResponseWriter, r *http.Request){
+	token := r.Header.Get("token")
+	if token == ""{
+		utils.WriteError(w, http.StatusBadRequest, errors.New("no token provided"))
+		return 
+	}
+
+	if err := h.service.CloseOngoingSession(r.Context(), token); err != nil{
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return 
 	}
 	utils.WriteJSON(w, http.StatusOK, nil)

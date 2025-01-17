@@ -100,3 +100,18 @@ func (s *UsersServiceImpl) CheckUserExistance(ctx context.Context, token string)
 	_, err := s.authService.GetUserIdFromSession(ctx, token)
 	return err
 }
+
+func (s *UsersServiceImpl) CloseOngoingSession(ctx context.Context, token string) error{
+	userId, err := s.authService.CloseSession(ctx, token)
+	if err != nil{
+		return err
+	}
+	if userId == nil{
+		return nil 
+	}
+
+	if err := s.usersRepo.DeleteUser(ctx, *userId); err != nil{
+		return err 
+	}
+	return nil
+}
