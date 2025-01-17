@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS users (
     id              UUID PRIMARY KEY,
     first_name      TEXT NOT NULL,
     last_name       TEXT NOT NULL,
+    nickname        TEXT NOT NULL,
     gender          TEXT NOT NULL,
     birth_date      DATE NOT NULL,
     created_at      TIMESTAMP  NOT NULL,
@@ -21,6 +22,7 @@ CREATE TABLE IF NOT EXISTS couples(
 CREATE TABLE IF NOT EXISTS temp_couples(
     user_id     UUID REFERENCES users(id),
     code        INTEGER NOT NULL UNIQUE,
+    start_date  DATE NOT NULL,
     created_at  TIMESTAMP NOT NULL,
     updated_at  TIMESTAMP NOT NULL,
     PRIMARY KEY(user_id)

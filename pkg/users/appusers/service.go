@@ -3,6 +3,7 @@ package appusers
 import (
 	"context"
 	"errors"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -78,6 +79,7 @@ func (s *UsersServiceImpl) CreateUser(
 			Active: true,
 			CountryCode: countryCode,
 			LanguageCode: languageCode,
+			NickName: firstName,
 		},
 	)
 	if err != nil{
@@ -114,4 +116,41 @@ func (s *UsersServiceImpl) CloseOngoingSession(ctx context.Context, token string
 		return err 
 	}
 	return nil
+}
+
+func (s *UsersServiceImpl) CreateTempCouple(ctx context.Context, token string, startDate int) (int, error){
+	var code int 
+	//unique code creation
+	for{
+		code = rand.Intn(89999) + 10000
+		if _,err := s.usersRepo.GetTempCoupleByCode(ctx, code); err != nil{
+			break
+		}
+	}
+	userId, err := s.authService.GetUserIdFromSession(ctx, token)
+	if err != nil{
+		return 0, err 
+	}
+
+	exists, err:= s.usersRepo.CheckTempCoupleById(ctx, *userId)
+	if err != nil{
+		return 0, err 
+	}
+
+	tempCouple := users.TempCoupleModel{
+		UserId: *userId,
+		Code: code,
+		StartDate: time.Unix(int64(startDate), 0),
+
+	}
+	if exists{
+		err = s.usersRepo.UpdateTempCouple(ctx, &tempCouple)
+	}else{
+		err = s.usersRepo.CreateTempCouple(ctx, &tempCouple)
+	}
+
+	if err != nil{
+		return 0, err 
+	}
+	return code, nil
 }

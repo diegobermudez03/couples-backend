@@ -27,6 +27,7 @@ func (h *UsersHandler) RegisterRoutes(r *chi.Mux){
 	router.Post("/", h.createUserEndpoint)
 	router.Get("/exists", h.checkExistanceEndpoint)
 	router.Delete("/logout", h.logoutEndpoint)
+	router.Post("/couples/temporal", h.createTempCoupleEndpoint)
 }
 
 
@@ -104,4 +105,33 @@ func (h *UsersHandler) logoutEndpoint(w http.ResponseWriter, r *http.Request){
 		return 
 	}
 	utils.WriteJSON(w, http.StatusOK, nil)
+}
+
+func (h *UsersHandler) createTempCoupleEndpoint(w http.ResponseWriter, r *http.Request){
+	token := r.Header.Get("token")
+	if token == ""{
+		utils.WriteError(w, http.StatusBadRequest, errors.New("no token provided"))
+		return 
+	}
+
+	payload := struct{
+		StartDate	int `json:"startDate" validate:"required"`
+	}{}
+	if err := utils.ReadJSON(r, &payload); err != nil{
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return 
+	}
+
+	code, err := h.service.CreateTempCouple(r.Context(), token, payload.StartDate)
+	if err != nil{
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return 
+	}
+	utils.WriteJSON(
+		w,
+		http.StatusCreated,
+		map[string]int{
+			"code" : code,
+		},
+	)
 }
