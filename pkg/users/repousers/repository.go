@@ -61,26 +61,27 @@ func (r *UsersPostgresRepo) DeleteUser(ctx context.Context, userId uuid.UUID) er
 	return nil
 }
 
-func (r *UsersPostgresRepo) GetTempCoupleUserIdByCode(ctx context.Context, code int) (*uuid.UUID, error){
+func (r *UsersPostgresRepo) GetTempCoupleByCode(ctx context.Context, code int) (*users.TempCoupleModel, error){
 	row := r.db.QueryRowContext(
 		ctx,
-		`SELECT user_id FROM temp_couples WHERE code = $1`,
+		`SELECT user_id, code, start_date, created_at, updated_at
+		FROM temp_couples WHERE code = $1`,
 		code,
 	)
-	userId := new(uuid.UUID) 
-	if err := row.Scan(&userId); err != nil{
+	tempCouple := new(users.TempCoupleModel) 
+	if err := row.Scan(&tempCouple.UserId, &tempCouple.Code, &tempCouple.StartDate, &tempCouple.CreatedAt, &tempCouple.UpdatedAt); err != nil{
 		return nil, errorNoCodeAssociated
 	}
-	return userId, nil
+	return tempCouple, nil
 }
 
 func (r *UsersPostgresRepo) CheckTempCoupleById(ctx context.Context, userId uuid.UUID) (bool, error){
 	row := r.db.QueryRowContext(
 		ctx,
-		`SELECT id FROM temp_couples WHERE user_id = $1`,
+		`SELECT user_id FROM temp_couples WHERE user_id = $1`,
 		userId,
 	)
-	var result int 
+	var result uuid.UUID 
 	if err := row.Scan(&result); errors.Is(err, sql.ErrNoRows){
 		return false, nil
 	}else if err != nil{
@@ -89,11 +90,11 @@ func (r *UsersPostgresRepo) CheckTempCoupleById(ctx context.Context, userId uuid
 	return true, nil
 }
 
-func (r *UsersPostgresRepo) UpdateTempCouple(ctx context.Context, id uuid.UUID, code int) error{
+func (r *UsersPostgresRepo) UpdateTempCouple(ctx context.Context, tempCouple *users.TempCoupleModel) error{
 	result, err := r.db.ExecContext(
 		ctx,
-		`UPDATE temp_couples SET code = $1, updated_at = $2 WHERE user_id = $3`,
-		code, time.Now(), id,
+		`UPDATE temp_couples SET code = $1, start_date = $2, updated_at = $3 WHERE user_id = $4`,
+		tempCouple.Code, tempCouple.StartDate ,time.Now(), tempCouple.UserId,
 	)
 	if err != nil{
 		return errorGeneratingCode
@@ -104,11 +105,11 @@ func (r *UsersPostgresRepo) UpdateTempCouple(ctx context.Context, id uuid.UUID, 
 	return nil
 }
 
-func (r *UsersPostgresRepo) CreateTempCouple(ctx context.Context, id uuid.UUID, code int) error{
+func (r *UsersPostgresRepo) CreateTempCouple(ctx context.Context, tempCouple *users.TempCoupleModel) error{
 	result, err := r.db.ExecContext(
 		ctx,
-		`INSERT INTO temp_couples (user_id, code, updated_at, created_at) VALUES($1, $2, $3, $4)`,
-		id, code, time.Now(), time.Now(),
+		`INSERT INTO temp_couples (user_id, code, start_date, updated_at, created_at) VALUES($1, $2, $3, $4, $5)`,
+		tempCouple.UserId, tempCouple.Code, tempCouple.StartDate ,time.Now(), time.Now(),
 	)
 	if err != nil{
 		return errorGeneratingCode
