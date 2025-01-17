@@ -15,12 +15,13 @@ type AccessClaims struct{
 }
 
 type AuthService interface {
-	RegisterUser(ctx context.Context, email string, password string, device string, os string) (refreshToken string, err error)
-	LoginUser(ctx context.Context, email string, password string, device string, os string) (refreshToken string, err error)
+	RegisterUserAuth(ctx context.Context, email string, password string, device string, os string) (refreshToken string, err error)
+	LoginUserAuth(ctx context.Context, email string, password string, device string, os string) (refreshToken string, err error)
 	GetUserIdFromSession(ctx context.Context, token string) (*uuid.UUID, error)
-	CreateAnonymousSession(ctx context.Context, userId uuid.UUID) (refreshToken string, err error)
 	VinculateAuthWithUser(ctx context.Context, token string, userId uuid.UUID) error
-	CloseSession(ctx context.Context, token string) (userId *uuid.UUID, err error)
+	CloseSession(ctx context.Context, token string) (error)
+	CreateTempCouple(ctx context.Context, token string, startDate int) (int, error)
+	CreateUser(ctx context.Context, token, firstName, lastName, gender, countryCode, languageCode string,birthDate int,) (refrshToken string, err error)
 }
 
 type AuthRepository interface {

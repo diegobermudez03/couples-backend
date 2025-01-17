@@ -83,8 +83,8 @@ func (s *APIServer) injectDependencies(router *chi.Mux){
 
 	//create services
 	localizationService := applocalization.NewLocalizationServiceImpl()
-	authService := appauth.NewAuthService(authRepository, s.config.AuthConfig.AccessTokenLife, s.config.AuthConfig.RefreshTokenLife)
-	usersService := appusers.NewUsersServiceImpl(authService, localizationService, usersRepository)
+	usersService := appusers.NewUsersServiceImpl(localizationService, usersRepository)
+	authService := appauth.NewAuthService(authRepository, usersService, s.config.AuthConfig.AccessTokenLife, s.config.AuthConfig.RefreshTokenLife)
 
 	//create handlers
 	authHandler := handlers.NewAuthHandler(authService)

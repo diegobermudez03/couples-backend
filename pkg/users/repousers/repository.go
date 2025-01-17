@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/diegobermudez03/couples-backend/pkg/users"
@@ -45,17 +46,19 @@ func (r *UsersPostgresRepo) CreateUser(ctx context.Context, user *users.UserMode
 	return nil
 }
 
-func (r *UsersPostgresRepo) DeleteUser(ctx context.Context, userId uuid.UUID) error{
+func (r *UsersPostgresRepo) DeleteUserById(ctx context.Context, userId uuid.UUID) error{
 	result, err := r.db.ExecContext(
 		ctx, 
 		`DELETE FROM users WHERE id = $1`,
 		userId,
 	)
 	if err != nil{
+		log.Print(err)
 		return errorDeletingUser
 	}
 
 	if num, err := result.RowsAffected(); num == 0 || err != nil{
+		log.Print(err)
 		return errorDeletingUser
 	}
 	return nil
@@ -118,4 +121,12 @@ func (r *UsersPostgresRepo) CreateTempCouple(ctx context.Context, tempCouple *us
 		return errorGeneratingCode
 	}
 	return nil
+}
+
+func (r *UsersPostgresRepo)  GetCoupleByUserId(ctx context.Context, userId uuid.UUID) (*users.CoupleModel, error){
+	return nil, users.ErrorNoCoupleFound
+}
+
+func (r *UsersPostgresRepo)  DeleteTempCoupleById(ctx context.Context, id uuid.UUID) error{
+	return users.ErrorNoCoupleFound
 }

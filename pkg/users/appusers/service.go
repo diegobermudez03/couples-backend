@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/diegobermudez03/couples-backend/pkg/auth"
 	"github.com/diegobermudez03/couples-backend/pkg/localization"
 	"github.com/diegobermudez03/couples-backend/pkg/users"
 	"github.com/google/uuid"
@@ -26,14 +25,12 @@ var (
 ///////////////////////////////////////////
 
 type UsersServiceImpl struct {
-	authService 		auth.AuthService
 	localizationService localization.LocalizationService
 	usersRepo 			users.UsersRepo
 }
 
-func NewUsersServiceImpl(authService auth.AuthService,localizationService localization.LocalizationService, usersRepo users.UsersRepo) users.UsersService {
+func NewUsersServiceImpl(localizationService localization.LocalizationService, usersRepo users.UsersRepo) users.UsersService {
 	return &UsersServiceImpl{
-		authService: authService,
 		usersRepo: usersRepo,
 		localizationService: localizationService,
 	}
@@ -43,34 +40,33 @@ func (s *UsersServiceImpl) CreateUser(
 	ctx context.Context,
 	firstName, lastName, gender, countryCode, languageCode string,
 	birthDate int,
-	token string,
-) (string, error) {
+) (*uuid.UUID, error) {
 	lowerGender := strings.ToLower(gender)
 	if _, ok := genders[lowerGender]; !ok{
-		return "", errorInvalidGender
+		return nil, errorInvalidGender
 	}
 	t := time.Unix(int64(birthDate), 0)
 
 	// if the users is less than 10 years old
 	if !time.Now().AddDate(-12, 0, 0).After(t){
-		return "", errorTooYoung
+		return nil, errorTooYoung
 	}
 
 	//check lang and country
 	err1, err2 := s.localizationService.ValidateCountry(countryCode), s.localizationService.ValidateLanguage(languageCode)
 	if err1 != nil{
-		return "", err1 
+		return nil, err1 
 	}
 	if err2 != nil{
-		return "", err2
+		return nil, err2
 	}
 
-
-	userId := uuid.New()
+	userId := new(uuid.UUID)
+	*userId = uuid.New()
 	err := s.usersRepo.CreateUser(
 		ctx, 
 		&users.UserModel{
-			Id: userId,
+			Id: *userId,
 			FirstName: firstName,
 			LastName: lastName,
 			Gender: lowerGender,
@@ -83,42 +79,28 @@ func (s *UsersServiceImpl) CreateUser(
 		},
 	)
 	if err != nil{
-		return "", err
+		return nil, err
 	}
+	return userId, nil
+}
 
-	//if the user had already a session we end here
-	if token != ""{
-		if err := s.authService.VinculateAuthWithUser(ctx, token, userId); err != nil{
-			return "", err
+func (s *UsersServiceImpl) DeleteUserById(ctx context.Context, userId uuid.UUID) error{
+	couple, err := s.usersRepo.GetCoupleByUserId(ctx, userId)
+	if !errors.Is(err, users.ErrorNoCoupleFound){
+		if couple != nil{
+			return users.ErrorUserHasActiveCouple 
+		}else{
+			return err
 		}
-		return token, nil
 	}
-	
-	//if the user doesn't have a session, then we create it
-	return s.authService.CreateAnonymousSession(ctx, userId)
-}
-
-func (s *UsersServiceImpl) CheckUserExistance(ctx context.Context, token string) error {
-	_, err := s.authService.GetUserIdFromSession(ctx, token)
-	return err
-}
-
-func (s *UsersServiceImpl) CloseOngoingSession(ctx context.Context, token string) error{
-	userId, err := s.authService.CloseSession(ctx, token)
-	if err != nil{
-		return err
-	}
-	if userId == nil{
-		return nil 
-	}
-
-	if err := s.usersRepo.DeleteUser(ctx, *userId); err != nil{
+	if err := s.usersRepo.DeleteUserById(ctx, userId); err != nil{
 		return err 
 	}
+	s.usersRepo.DeleteTempCoupleById(ctx, userId)
 	return nil
 }
 
-func (s *UsersServiceImpl) CreateTempCouple(ctx context.Context, token string, startDate int) (int, error){
+func (s *UsersServiceImpl) CreateTempCouple(ctx context.Context, userId uuid.UUID, startDate int) (int, error){
 	var code int 
 	//unique code creation
 	for{
@@ -127,18 +109,13 @@ func (s *UsersServiceImpl) CreateTempCouple(ctx context.Context, token string, s
 			break
 		}
 	}
-	userId, err := s.authService.GetUserIdFromSession(ctx, token)
-	if err != nil{
-		return 0, err 
-	}
-
-	exists, err:= s.usersRepo.CheckTempCoupleById(ctx, *userId)
+	exists, err:= s.usersRepo.CheckTempCoupleById(ctx, userId)
 	if err != nil{
 		return 0, err 
 	}
 
 	tempCouple := users.TempCoupleModel{
-		UserId: *userId,
+		UserId: userId,
 		Code: code,
 		StartDate: time.Unix(int64(startDate), 0),
 

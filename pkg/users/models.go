@@ -26,3 +26,5 @@ type TempCoupleModel struct{
 	CreatedAt 	time.Time 
 	UpdatedAt 	time.Time
 }
+
+type CoupleModel struct{}
