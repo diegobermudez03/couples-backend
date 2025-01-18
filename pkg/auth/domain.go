@@ -20,8 +20,10 @@ type AuthService interface {
 	CloseSession(ctx context.Context, token string) (error)
 	CreateTempCouple(ctx context.Context, token string, startDate int) (int, error)
 	CreateUser(ctx context.Context, token, firstName, lastName, gender, countryCode, languageCode string,birthDate int,) (refrshToken string, err error)
-	ConnectCouple(ctx context.Context, token string, code int) error
+	ConnectCouple(ctx context.Context, token string, code int) (accessToken string, err error)
 	CheckUserAuthStatus(ctx context.Context, token string) (string, error)
+	CreateAccessToken(ctx context.Context, token string)(string, error)
+	ValidateAccessToken(ctx context.Context, accessTokenString string) (*AccessClaims, error)
 }
 
 type AuthRepository interface {

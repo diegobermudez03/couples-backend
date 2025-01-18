@@ -8,6 +8,7 @@ import (
 
 	"github.com/diegobermudez03/couples-backend/internal/config"
 	"github.com/diegobermudez03/couples-backend/internal/http/handlers"
+	"github.com/diegobermudez03/couples-backend/internal/http/middlewares"
 	"github.com/diegobermudez03/couples-backend/pkg/auth/appauth"
 	"github.com/diegobermudez03/couples-backend/pkg/auth/repoauth"
 	"github.com/diegobermudez03/couples-backend/pkg/localization/applocalization"
@@ -86,9 +87,11 @@ func (s *APIServer) injectDependencies(router *chi.Mux){
 	usersService := appusers.NewUsersServiceImpl(localizationService, usersRepository)
 	authService := appauth.NewAuthService(authRepository, usersService, s.config.AuthConfig.AccessTokenLife, s.config.AuthConfig.RefreshTokenLife)
 
+	//middlewares
+	middlewares := middlewares.NewMiddlewares(authService)
 	//create handlers
 	authHandler := handlers.NewAuthHandler(authService)
-	usersHandler := handlers.NewUsersHandler(usersService)
+	usersHandler := handlers.NewUsersHandler(usersService, middlewares)
 
 	//registering routes
 	authHandler.RegisterRoutes(router)

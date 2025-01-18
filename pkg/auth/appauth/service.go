@@ -177,15 +177,60 @@ func (s *AuthServiceImpl) CheckUserAuthStatus(ctx context.Context, token string)
 
 }
 
-func (s *AuthServiceImpl)  ConnectCouple(ctx context.Context, token string, code int) error{
+func (s *AuthServiceImpl)  ConnectCouple(ctx context.Context, token string, code int) (string, error) {
 	userId, err := s.getUserIdFromSession(ctx, token)
 	if err != nil{
-		return err
+		return "", err
 	}
-	if err := s.usersService.ConnectCouple(ctx, *userId, code); err != nil{
-		return err
+	coupleId, err := s.usersService.ConnectCouple(ctx, *userId, code)
+	if err != nil{
+		return "", err
 	}
-	return nil
+	return s.createAccessToken(*userId, *coupleId)
+}
+
+
+func (s *AuthServiceImpl) CreateAccessToken(ctx context.Context, token string)(string, error){
+	session, err := s.authRepo.GetSessionByToken(ctx, token)
+	if err != nil{
+		return "", err 
+	}
+	if session.ExpiresAt.Before(time.Now()){
+		s.authRepo.DeleteSessionById(ctx, session.Id)
+		return "", auth.ErrorExpiredRefreshToken
+	}
+	user, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
+	if err != nil{
+		return "", err 
+	}
+	if user.UserId == nil{
+		return "", auth.ErrorNoActiveUser
+	}
+	couple, err := s.usersService.GetCoupleFromUser(ctx, *user.UserId)
+	if err != nil{
+		return "", err 
+	}
+	if couple == nil {
+		return "", auth.ErrorNoActiveCoupleFromUser
+	}
+	return s.createAccessToken(*user.UserId, couple.Id)
+}
+
+func (s *AuthServiceImpl) ValidateAccessToken(ctx context.Context, accessTokenString string) (*auth.AccessClaims, error){
+	accessToken, err := jwt.ParseWithClaims(accessTokenString, &auth.AccessClaims{}, func(t *jwt.Token) (interface{}, error) {
+		return []byte(s.jwtSecret), nil
+	})
+	if err != nil{
+		if errors.Is(err, jwt.ErrTokenExpired){
+			return nil, auth.ErrorExpiredAccessToken
+		}
+		return nil, auth.ErrorMalformedAccessToken
+	}
+	if !accessToken.Valid{
+		return nil, auth.ErrorExpiredAccessToken
+	}
+	claims := accessToken.Claims.(*auth.AccessClaims)
+	return claims, nil
 }
 
 

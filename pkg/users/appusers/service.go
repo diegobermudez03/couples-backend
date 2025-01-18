@@ -149,29 +149,29 @@ func (s *UsersServiceImpl) GetCoupleFromUser(ctx context.Context, userId uuid.UU
 }
 
 
-func (s *UsersServiceImpl) ConnectCouple(ctx context.Context, userId uuid.UUID, code int) error{
+func (s *UsersServiceImpl) ConnectCouple(ctx context.Context, userId uuid.UUID, code int) (*uuid.UUID, error){
 	// check that the user doesn't have a couple
 	coupleCheck, _ := s.usersRepo.GetCoupleByUserId(ctx, userId)
 	if coupleCheck != nil{
-		return errorUserAlreadyHasCouple
+		return nil, errorUserAlreadyHasCouple
 	}
 	
 	tempCouple, _ := s.usersRepo.GetTempCoupleByCode(ctx, code)
 	if tempCouple == nil{
-		return errorInvalidCode
+		return nil, errorInvalidCode
 	}
 	//check that the user isn't connecting with himself
 	if userId == tempCouple.UserId{
-		return errorCantConnectWithYourself
+		return nil, errorCantConnectWithYourself
 	}
 	//create the couple
 	user1, err := s.usersRepo.GetUserById(ctx, userId)
 	if err != nil {
-		return err 
+		return nil, err 
 	}
 	user2, err := s.usersRepo.GetUserById(ctx, tempCouple.UserId)
 	if err != nil {
-		return err 
+		return nil, err 
 	}
 
 	var heId uuid.UUID
@@ -192,7 +192,7 @@ func (s *UsersServiceImpl) ConnectCouple(ctx context.Context, userId uuid.UUID, 
 		SheId: sheId,
 	}
 	if err := s.usersRepo.CreateCouple(ctx, couple); err != nil{
-		return err 
+		return nil, err 
 	}
 
 	//delete temp couples
@@ -211,7 +211,7 @@ func (s *UsersServiceImpl) ConnectCouple(ctx context.Context, userId uuid.UUID, 
 		},
 	)
 	if err != nil{
-		return err
+		return nil, err
 	}
-	return nil
+	return &coupleId, nil
 }

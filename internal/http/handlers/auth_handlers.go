@@ -26,10 +26,11 @@ func (h *AuthHandler) RegisterRoutes(r *chi.Mux){
 	router.Post("/register", h.registerEndpoint)
 	router.Get("/login", h.LoginEndpoint)
 	router.Post("/users", h.createUserEndpoint)
-	router.Get("/users/exists", h.checkExistanceEndpoint)
+	router.Get("/users/status", h.checkExistanceEndpoint)
 	router.Delete("/users/logout", h.logoutEndpoint)
 	router.Get("/couples/temporal", h.getTempCoupleCodeEndpoint)
 	router.Post("/couples/temporal", h.connectWithCoupleEndpoint)
+	router.Get("/accessToken", h.getAccessTokenEndpoint)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -224,10 +225,27 @@ func (h *AuthHandler) connectWithCoupleEndpoint(w http.ResponseWriter, r *http.R
 		return 
 	}
 
-	if err := h.authService.ConnectCouple(r.Context(), token, payload.Code); err != nil{
+	accessToken, err := h.authService.ConnectCouple(r.Context(), token, payload.Code)
+	if err != nil{
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return 
 	}
-	utils.WriteJSON(w, http.StatusCreated, nil)
+	utils.WriteJSON(w, http.StatusCreated, map[string]string{"accessToken" : accessToken})
 }
 
+func (h *AuthHandler) getAccessTokenEndpoint(w http.ResponseWriter, r *http.Request){
+	payload := struct{
+		RefreshToken 	string 	`json:"refreshToken" validate:"required"`
+	}{}
+	if err := utils.ReadJSON(r, &payload); err != nil{
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return 
+	}
+
+	accessToken, err := h.authService.CreateAccessToken(r.Context(), payload.RefreshToken)
+	if err != nil{
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return 
+	}
+	utils.WriteJSON(w, http.StatusCreated, map[string]string{"accessToken" : accessToken})
+}

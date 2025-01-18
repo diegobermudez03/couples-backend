@@ -15,7 +15,7 @@ type UsersService interface {
 	CreateTempCouple(ctx context.Context, userId uuid.UUID, startDate int) (int, error)
 	DeleteUserById(ctx context.Context, userId uuid.UUID) error
 	GetCoupleFromUser(ctx context.Context, userId uuid.UUID) (*CoupleModel, error)
-	ConnectCouple(ctx context.Context, userId uuid.UUID, code int) error
+	ConnectCouple(ctx context.Context, userId uuid.UUID, code int)(*uuid.UUID, error)
 }
 
 type UsersRepo interface{
