@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"log"
 	"regexp"
 	"time"
 
@@ -43,7 +44,7 @@ func NewAuthService(authRepo auth.AuthRepository, usersService users.UsersServic
 }
 
 
-func(s *AuthServiceImpl) RegisterUserAuth(ctx context.Context, email string, password string, device string, os string) (string, error){
+func(s *AuthServiceImpl) RegisterUserAuth(ctx context.Context, email, password, device, os, token string) (string, error){
 	// data verifications
 	if num := len(password); num < 6 {
 		return "", errorInsecurePassword
@@ -61,14 +62,41 @@ func(s *AuthServiceImpl) RegisterUserAuth(ctx context.Context, email string, pas
 	if err != nil{
 		return "", errorHashingPassword
 	}
+	hashString := string(hashBytes)
 
+	var userId uuid.UUID
+	log.Print(token)
+	// check token 
+	if token != ""{
+		session, _ := s.authRepo.GetSessionByToken(ctx, token)
+		log.Print(session)
+		if session != nil{
+			log.Print("session not null")
+			userAuth, _ := s.authRepo.GetUserById(ctx, session.UserAuthId)
+			log.Print(userAuth)
+			if userAuth != nil && s.checkIfAnonymousAuth(userAuth){
+				log.Print("user anonymous")
+				userId = userAuth.Id
+				userAuth.Email = &email
+				userAuth.Hash = &hashString
+				if err := s.authRepo.UpdateAuthUserById(
+					ctx,
+					userId,
+					userAuth,
+				); err != nil{
+					return "", err 
+				}
+				return token, nil
+			}
+		}
+	}
 	//create user auth
-	userId := uuid.New()
+	userId = uuid.New()
 	err = s.authRepo.CreateUserAuth(
 		ctx,
 		userId,
 		email,
-		string(hashBytes),
+		hashString,
 	)
 	if err != nil{
 		return "",  err
@@ -92,7 +120,7 @@ func (s *AuthServiceImpl) LoginUserAuth(ctx context.Context, email string, passw
 	return s.createSession(ctx, user.Id, &device, &os)
 }
 
-func (s *AuthServiceImpl) CloseSession(ctx context.Context, token string) error{
+func (s *AuthServiceImpl) CloseUsersSession(ctx context.Context, token string) error{
 	session, err := s.authRepo.GetSessionByToken(ctx, token)
 	if err != nil{
 		return err
@@ -105,7 +133,7 @@ func (s *AuthServiceImpl) CloseSession(ctx context.Context, token string) error{
 		return err
 	}
 	//if it's an anonymous account then delete both the account and the user
-	if authUser.Email == nil && authUser.OauthProvider == nil{
+	if s.checkIfAnonymousAuth(authUser){
 		if err := s.authRepo.DeleteUserAuthById(ctx, authUser.Id); err != nil{
 			return err 
 		}
@@ -242,14 +270,21 @@ func (s *AuthServiceImpl) ValidateAccessToken(ctx context.Context, accessTokenSt
 
 
 func (s *AuthServiceImpl) createSession(ctx context.Context, authId uuid.UUID, device *string, os *string) (string, error){
-	randomBytes := make([]byte, 32)
-	_, err := rand.Read(randomBytes) 
-	if err != nil{
-		return "", err
+	var token string 
+	for{
+		randomBytes := make([]byte, 32)
+		_, err := rand.Read(randomBytes) 
+		if err != nil{
+			return "", err
+		}
+		token = base64.URLEncoding.EncodeToString(randomBytes)
+		session, _ := s.authRepo.GetSessionByToken(ctx, token)
+		if session == nil{
+			break
+		}
 	}
-	token := base64.URLEncoding.EncodeToString(randomBytes)
-
-	err = s.authRepo.CreateSession(
+	
+	err := s.authRepo.CreateSession(
 		ctx, 
 		uuid.New(),
 		authId,
@@ -291,4 +326,8 @@ func (s *AuthServiceImpl) getUserIdFromSession(ctx context.Context, token string
 		return nil, err 
 	}
 	return user.UserId, nil
+}
+
+func (s *AuthServiceImpl) checkIfAnonymousAuth(auth *auth.UserAuthModel) bool{
+	return auth.Email == nil && auth.OauthProvider == nil
 }

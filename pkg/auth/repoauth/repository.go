@@ -23,6 +23,7 @@ var (
 	errorDeletingUserAuth = errors.New("there was an error deleting the user auth")
 	errorsNoSessionToDelete = errors.New("there's no session to delete")
 	errorNoUserAuthToDelete = errors.New("there's no user auth to delete")
+	errorUpdatingUserAuth = errors.New("there was an error updating the user account")
 )
 
 type AuthPostgresRepo struct {
@@ -152,6 +153,7 @@ func (r *AuthPostgresRepo) DeleteSessionById(ctx context.Context, sessionId uuid
 	}
 	return nil
 }
+
 func (r *AuthPostgresRepo) DeleteUserAuthById(ctx context.Context, authId uuid.UUID) error{
 	result, err := r.db.ExecContext(
 		ctx, 
@@ -163,6 +165,22 @@ func (r *AuthPostgresRepo) DeleteUserAuthById(ctx context.Context, authId uuid.U
 	}
 	if num, _ := result.RowsAffected(); num == 0{
 		return errorNoUserAuthToDelete
+	}
+	return nil
+}
+
+func (r *AuthPostgresRepo) UpdateAuthUserById(ctx context.Context, authId uuid.UUID, authModel *auth.UserAuthModel) error{
+	result, err := r.db.ExecContext(
+		ctx,
+		`UPDATE users_auth SET email = $1, hash = $2, oauth_provider = $3, oauth_id = $4
+		WHERE id = $5`,
+		authModel.Email, authModel.Hash, authModel.OauthProvider, authModel.OauthId, authId,
+	)
+	if err != nil{
+		return errorUpdatingUserAuth
+	}
+	if num, _ := result.RowsAffected(); num == 0{
+		return errorUpdatingUserAuth
 	}
 	return nil
 }

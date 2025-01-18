@@ -31,8 +31,7 @@ CREATE TABLE IF NOT EXISTS temp_couples(
 CREATE TABLE IF NOT EXISTS points(
     id              UUID PRIMARY KEY,
     points          INTEGER NOT NULL,
-    starting_day    DATE NOT NULL,
-    ending_day      DATE NOT NULL,
+    day             DATE NOT NULL,
     user_id         UUID REFERENCES users(id),
     couple_id       UUID REFERENCES couples(id)
 );

@@ -15,10 +15,11 @@ var (
 	ErrNoAccessToken = errors.New("no access token provided")
 )
 
-const(
-	UserIdKey = "userId"
-	CoupleIdKey = "coupleId"
-)
+type userIdKeyType string
+type coupleIdKeyType string
+
+const UserIdKey userIdKeyType= "userId"
+const CoupleIdKey coupleIdKeyType = "coupleId"
 
 type Middlewares struct {
 	authService auth.AuthService

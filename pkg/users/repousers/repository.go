@@ -25,6 +25,7 @@ var (
 	errorCreatingCouple = errors.New("there was an error creating the couple")
 	errorAddingPoints = errors.New("there was an error adding the points")
 	errorNoUserFound = errors.New("no user found")
+	errorUpdatingNickname = errors.New("there was an error updating the nickname")
 )
 
 type UsersPostgresRepo struct {
@@ -180,9 +181,9 @@ func (r *UsersPostgresRepo) CreateCouple(ctx context.Context, couple *users.Coup
 func (r *UsersPostgresRepo) CreateCouplePoints(ctx context.Context, points *users.PointsModel) error{
 	result, err := r.db.ExecContext(
 		ctx, 
-		`INSERT INTO points(id, points, starting_day, ending_day, couple_id)
-		VALUES($1, $2, $3, $4, $5)`,
-		points.Id, points.Points, points.StartingDay, points.EndingDay, *points.CoupleId,
+		`INSERT INTO points(id, points, day, couple_id)
+		VALUES($1, $2, $3, $4)`,
+		points.Id, points.Points, points.Day, *points.CoupleId,
 	)
 	if err != nil{
 		log.Print(err)
@@ -209,4 +210,37 @@ func (r *UsersPostgresRepo) GetUserById(ctx context.Context, userId uuid.UUID) (
 		return nil, errorNoUserFound
 	}
 	return user, nil
+}
+
+func (r *UsersPostgresRepo) GetCoupleById(ctx context.Context, coupleId uuid.UUID) (*users.CoupleModel, error){
+	row := r.db.QueryRowContext(
+		ctx,
+		`SELECT id, he_id, she_id, relation_start, end_date
+		FROM couples WHERE id = $1`,
+		coupleId,
+	)
+	coupleModel := new(users.CoupleModel)
+
+	err := row.Scan(&coupleModel.Id, &coupleModel.HeId, &coupleModel.SheId, &coupleModel.RelationStart, &coupleModel.EndDate)
+	if errors.Is(err, sql.ErrNoRows){
+		return nil, users.ErrorNoCoupleFound
+	}else if err != nil{
+		return nil, errorRettrievingCouple
+	}
+	return coupleModel, nil
+}
+
+func (r *UsersPostgresRepo) UpdateUserNicknameById(ctx context.Context, userId uuid.UUID, nickname string) error{
+	result, err := r.db.ExecContext(
+		ctx,
+		`UPDATE users SET nickname = $1 WHERE id = $2`,
+		nickname, userId,
+	)
+	if err != nil{
+		return errorUpdatingNickname
+	}
+	if num, _ := result.RowsAffected(); num == 0{
+		return errorUpdatingNickname
+	}
+	return nil
 }

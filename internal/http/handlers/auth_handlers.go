@@ -76,6 +76,7 @@ func (h *AuthHandler) registerEndpoint(w http.ResponseWriter, r *http.Request){
 		return 
 	}
 
+	token := r.Header.Get("token")
 	// call service
 	refreshToken, err := h.authService.RegisterUserAuth(
 		r.Context(),
@@ -83,6 +84,7 @@ func (h *AuthHandler) registerEndpoint(w http.ResponseWriter, r *http.Request){
 		payload.Password,
 		payload.Device,
 		payload.Os,
+		token,
 	)
 	if err != nil{
 		utils.WriteError(w, http.StatusInternalServerError, err)
@@ -173,11 +175,11 @@ func (h *AuthHandler) logoutEndpoint(w http.ResponseWriter, r *http.Request){
 		return 
 	}
 
-	if err := h.authService.CloseSession(r.Context(), token); err != nil{
+	if err := h.authService.CloseUsersSession(r.Context(), token); err != nil{
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return 
 	}
-	utils.WriteJSON(w, http.StatusOK, nil)
+	utils.WriteJSON(w, http.StatusNoContent, nil)
 }
 
 func (h *AuthHandler) getTempCoupleCodeEndpoint(w http.ResponseWriter, r *http.Request){

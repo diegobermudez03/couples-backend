@@ -16,6 +16,7 @@ type UsersService interface {
 	DeleteUserById(ctx context.Context, userId uuid.UUID) error
 	GetCoupleFromUser(ctx context.Context, userId uuid.UUID) (*CoupleModel, error)
 	ConnectCouple(ctx context.Context, userId uuid.UUID, code int)(*uuid.UUID, error)
+	EditPartnersNickname(ctx context.Context, userId uuid.UUID, coupleId uuid.UUID, nickname string) error
 }
 
 type UsersRepo interface{
@@ -30,6 +31,8 @@ type UsersRepo interface{
 	GetUserById(ctx context.Context, userId uuid.UUID) (*UserModel, error)
 	CreateCouple(ctx context.Context, couple *CoupleModel) error
 	CreateCouplePoints(ctx context.Context, points *PointsModel) error
+	GetCoupleById(ctx context.Context, coupleId uuid.UUID) (*CoupleModel, error)
+	UpdateUserNicknameById(ctx context.Context, userId uuid.UUID, nickname string) error
 }
 
 

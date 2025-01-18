@@ -204,8 +204,7 @@ func (s *UsersServiceImpl) ConnectCouple(ctx context.Context, userId uuid.UUID, 
 		ctx,
 		&users.PointsModel{
 			Id: uuid.New(),
-			StartingDay: time.Now(),
-			EndingDay: time.Now().AddDate(0,0,7),
+			Day: time.Now(),
 			Points: users.CouplePointsForConnecting,
 			CoupleId: &coupleId,
 		},
@@ -214,4 +213,22 @@ func (s *UsersServiceImpl) ConnectCouple(ctx context.Context, userId uuid.UUID, 
 		return nil, err
 	}
 	return &coupleId, nil
+}
+
+func (s *UsersServiceImpl) EditPartnersNickname(ctx context.Context, userId uuid.UUID, coupleId uuid.UUID, nickname string) error{
+	couple, err := s.usersRepo.GetCoupleById(ctx, coupleId)
+	if err != nil{
+		return err 
+	}
+	var partnerId uuid.UUID
+	if couple.HeId == userId{
+		partnerId = couple.SheId
+	}else{
+		partnerId = couple.HeId
+	}
+
+	if err := s.usersRepo.UpdateUserNicknameById(ctx, partnerId, nickname); err != nil{
+		return err 
+	}
+	return nil
 }

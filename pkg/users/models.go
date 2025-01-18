@@ -38,8 +38,7 @@ type CoupleModel struct{
 
 type PointsModel struct{
 	Id 			uuid.UUID
-	StartingDay 	time.Time
-	EndingDay 	time.Time
+	Day 		time.Time
 	Points 		int 
 	CoupleId 	*uuid.UUID
 	UserId 		*uuid.UUID

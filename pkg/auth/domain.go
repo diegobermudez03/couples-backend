@@ -15,9 +15,9 @@ type AccessClaims struct{
 }
 
 type AuthService interface {
-	RegisterUserAuth(ctx context.Context, email string, password string, device string, os string) (refreshToken string, err error)
+	RegisterUserAuth(ctx context.Context, email, password, device, os, token string) (refreshToken string, err error)
 	LoginUserAuth(ctx context.Context, email string, password string, device string, os string) (refreshToken string, err error)
-	CloseSession(ctx context.Context, token string) (error)
+	CloseUsersSession(ctx context.Context, token string) (error)
 	CreateTempCouple(ctx context.Context, token string, startDate int) (int, error)
 	CreateUser(ctx context.Context, token, firstName, lastName, gender, countryCode, languageCode string,birthDate int,) (refrshToken string, err error)
 	ConnectCouple(ctx context.Context, token string, code int) (accessToken string, err error)
@@ -36,6 +36,7 @@ type AuthRepository interface {
 	UpdateAuthUserId(ctx context.Context, authId uuid.UUID, userId uuid.UUID) error
 	DeleteSessionById(ctx context.Context, sessionId uuid.UUID) error
 	DeleteUserAuthById(ctx context.Context, authId uuid.UUID) error
+	UpdateAuthUserById(ctx context.Context, authId uuid.UUID, authModel *UserAuthModel) error
 }
 
 
