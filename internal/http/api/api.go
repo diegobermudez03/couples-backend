@@ -90,7 +90,7 @@ func (s *APIServer) injectDependencies(router *chi.Mux){
 	//middlewares
 	middlewares := middlewares.NewMiddlewares(authService)
 	//create handlers
-	authHandler := handlers.NewAuthHandler(authService)
+	authHandler := handlers.NewAuthHandler(authService, middlewares)
 	usersHandler := handlers.NewUsersHandler(usersService, middlewares)
 
 	//registering routes

@@ -9,4 +9,5 @@ var (
 	ErrorExpiredRefreshToken = errors.New("the refresh token is expired")
 	ErrorExpiredAccessToken = errors.New("the access token is expired")
 	ErrorMalformedAccessToken = errors.New("malformed access token")
+	ErrorCantLogoutAnonymousAcc = errors.New("cant logout from an anonymous account")
 )

@@ -17,9 +17,11 @@ var (
 
 type userIdKeyType string
 type coupleIdKeyType string
+type sessionIdKeyType string
 
 const UserIdKey userIdKeyType= "userId"
 const CoupleIdKey coupleIdKeyType = "coupleId"
+const SessionIdKey sessionIdKeyType = "sessionId"
 
 type Middlewares struct {
 	authService auth.AuthService
@@ -49,12 +51,11 @@ func (m *Middlewares) CheckAccessToken(handler http.Handler) http.Handler{
 				return
 			}
 			
-			userId := claims.UserId
-			coupleId := claims.CoupleId
-			ctx := context.WithValue(r.Context(), UserIdKey, userId)
-			ctx = context.WithValue(ctx, CoupleIdKey, coupleId)
+			ctx := context.WithValue(r.Context(), UserIdKey, claims.UserId)
+			ctx = context.WithValue(ctx, CoupleIdKey, claims.CoupleId)
+			ctx = context.WithValue(ctx, SessionIdKey, claims.SessionId)
 			r = r.WithContext(ctx)
-			log.Printf("Succesfully validated %s", userId)
+			log.Printf("Succesfully validated %s", claims.UserId)
 			handler.ServeHTTP(w, r)
 		},
 	)

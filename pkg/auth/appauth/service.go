@@ -205,16 +205,20 @@ func (s *AuthServiceImpl) CheckUserAuthStatus(ctx context.Context, token string)
 
 }
 
-func (s *AuthServiceImpl)  ConnectCouple(ctx context.Context, token string, code int) (string, error) {
-	userId, err := s.getUserIdFromSession(ctx, token)
+func (s *AuthServiceImpl) ConnectCouple(ctx context.Context, token string, code int) (string, error) {
+	session, err := s.authRepo.GetSessionByToken(ctx, token)
+	if err != nil{
+		return "", err 
+	}
+	auth, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
+	if err != nil{
+		return "", err 
+	}
+	coupleId, err := s.usersService.ConnectCouple(ctx, *auth.UserId, code)
 	if err != nil{
 		return "", err
 	}
-	coupleId, err := s.usersService.ConnectCouple(ctx, *userId, code)
-	if err != nil{
-		return "", err
-	}
-	return s.createAccessToken(*userId, *coupleId)
+	return s.createAccessToken(*auth.UserId, *coupleId, session.Id)
 }
 
 
@@ -241,7 +245,7 @@ func (s *AuthServiceImpl) CreateAccessToken(ctx context.Context, token string)(s
 	if couple == nil {
 		return "", auth.ErrorNoActiveCoupleFromUser
 	}
-	return s.createAccessToken(*user.UserId, couple.Id)
+	return s.createAccessToken(*user.UserId, couple.Id, session.Id)
 }
 
 func (s *AuthServiceImpl) ValidateAccessToken(ctx context.Context, accessTokenString string) (*auth.AccessClaims, error){
@@ -259,6 +263,24 @@ func (s *AuthServiceImpl) ValidateAccessToken(ctx context.Context, accessTokenSt
 	}
 	claims := accessToken.Claims.(*auth.AccessClaims)
 	return claims, nil
+}
+
+func (s *AuthServiceImpl) LogoutSession(ctx context.Context, sessionId uuid.UUID) error{
+	session, err := s.authRepo.GetSessionById(ctx, sessionId)
+	if err != nil{
+		return err 
+	}
+	authUser, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
+	if err != nil{
+		return err 
+	}
+	if s.checkIfAnonymousAuth(authUser){
+		return auth.ErrorCantLogoutAnonymousAcc
+	}
+	if err := s.authRepo.DeleteSessionById(ctx, session.Id); err != nil{
+		return err 
+	}
+	return nil
 }
 
 
@@ -300,10 +322,11 @@ func (s *AuthServiceImpl) createSession(ctx context.Context, authId uuid.UUID, d
 }
 
 
-func (s *AuthServiceImpl) createAccessToken(userId uuid.UUID, coupleId uuid.UUID) (string, error){
+func (s *AuthServiceImpl) createAccessToken(userId uuid.UUID, coupleId uuid.UUID, sessionId uuid.UUID) (string, error){
 	claims := auth.AccessClaims{
 		UserId: userId,
 		CoupleId: coupleId,
+		SessionId : sessionId,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(s.accessTokenLife*int64(time.Second)))),
 		},

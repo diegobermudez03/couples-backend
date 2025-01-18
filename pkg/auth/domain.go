@@ -11,6 +11,7 @@ import (
 type AccessClaims struct{
 	UserId 		uuid.UUID
 	CoupleId 	uuid.UUID
+	SessionId 	uuid.UUID
 	jwt.RegisteredClaims
 }
 
@@ -24,6 +25,7 @@ type AuthService interface {
 	CheckUserAuthStatus(ctx context.Context, token string) (string, error)
 	CreateAccessToken(ctx context.Context, token string)(string, error)
 	ValidateAccessToken(ctx context.Context, accessTokenString string) (*AccessClaims, error)
+	LogoutSession(ctx context.Context, sessionId uuid.UUID) error
 }
 
 type AuthRepository interface {
@@ -33,6 +35,7 @@ type AuthRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*UserAuthModel, error)
 	GetUserById(ctx context.Context, id uuid.UUID) (*UserAuthModel, error)
 	GetSessionByToken(ctx context.Context, token string) (*SessionModel, error)
+	GetSessionById(ctx context.Context, id uuid.UUID) (*SessionModel, error)
 	UpdateAuthUserId(ctx context.Context, authId uuid.UUID, userId uuid.UUID) error
 	DeleteSessionById(ctx context.Context, sessionId uuid.UUID) error
 	DeleteUserAuthById(ctx context.Context, authId uuid.UUID) error

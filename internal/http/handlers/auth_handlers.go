@@ -4,18 +4,22 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/diegobermudez03/couples-backend/internal/http/middlewares"
 	"github.com/diegobermudez03/couples-backend/internal/utils"
 	"github.com/diegobermudez03/couples-backend/pkg/auth"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
 type AuthHandler struct {
 	authService 	auth.AuthService
+	middlewares 	*middlewares.Middlewares
 }
 
-func NewAuthHandler(authService auth.AuthService) *AuthHandler {
+func NewAuthHandler(authService auth.AuthService, middlewares *middlewares.Middlewares) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
+		middlewares: middlewares,
 	}
 }
 
@@ -27,10 +31,12 @@ func (h *AuthHandler) RegisterRoutes(r *chi.Mux){
 	router.Get("/login", h.LoginEndpoint)
 	router.Post("/users", h.createUserEndpoint)
 	router.Get("/users/status", h.checkExistanceEndpoint)
-	router.Delete("/users/logout", h.logoutEndpoint)
+	router.Delete("/users/logout", h.userLogoutEndpoint)
 	router.Get("/couples/temporal", h.getTempCoupleCodeEndpoint)
 	router.Post("/couples/temporal", h.connectWithCoupleEndpoint)
 	router.Get("/accessToken", h.getAccessTokenEndpoint)
+	router.With(h.middlewares.CheckAccessToken).Delete("/logout", h.logoutEndpoint)
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -168,7 +174,7 @@ func (h *AuthHandler) checkExistanceEndpoint(w http.ResponseWriter, r *http.Requ
 	})
 }
 
-func (h *AuthHandler) logoutEndpoint(w http.ResponseWriter, r *http.Request){
+func (h *AuthHandler) userLogoutEndpoint(w http.ResponseWriter, r *http.Request){
 	token := r.Header.Get("token")
 	if token == ""{
 		utils.WriteError(w, http.StatusBadRequest, errors.New("no token provided"))
@@ -250,4 +256,14 @@ func (h *AuthHandler) getAccessTokenEndpoint(w http.ResponseWriter, r *http.Requ
 		return 
 	}
 	utils.WriteJSON(w, http.StatusCreated, map[string]string{"accessToken" : accessToken})
+}
+
+
+func (h *AuthHandler) logoutEndpoint(w http.ResponseWriter, r *http.Request){
+	sessionId := r.Context().Value(middlewares.SessionIdKey).(uuid.UUID)
+	if err := h.authService.LogoutSession(r.Context(), sessionId); err != nil{
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return 
+	}
+	utils.WriteJSON(w, http.StatusNoContent, nil)
 }

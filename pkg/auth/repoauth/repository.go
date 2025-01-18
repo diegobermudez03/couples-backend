@@ -93,7 +93,6 @@ func (r *AuthPostgresRepo) GetSessionByToken(ctx context.Context, token string) 
 	}else if err != nil{
 		return nil, errorRetrievingSession
 	}
-
 	return model, nil
 }
 
@@ -185,6 +184,23 @@ func (r *AuthPostgresRepo) UpdateAuthUserById(ctx context.Context, authId uuid.U
 	return nil
 }
 
+func (r *AuthPostgresRepo) GetSessionById(ctx context.Context, id uuid.UUID) (*auth.SessionModel, error){
+	row := r.db.QueryRowContext(
+		ctx,
+		`SELECT id, token, device, os, expires_at, created_at, last_used, user_auth_id
+		FROM sessions WHERE id = $1`,
+		id,
+	)
+	model := new(auth.SessionModel)
+
+	err := row.Scan(&model.Id, &model.Token, &model.Device, &model.Os, &model.ExpiresAt, &model.CreatedAt, &model.LastUsed, &model.UserAuthId)
+	if errors.Is(err, sql.ErrNoRows){
+		return nil, errorNoSessionFound
+	}else if err != nil{
+		return nil, errorRetrievingSession
+	}
+	return model, nil
+}
 
 ///////////////////// HELPERS
 
