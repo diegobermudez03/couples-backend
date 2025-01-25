@@ -28,7 +28,7 @@ func (h *AuthHandler) RegisterRoutes(r *chi.Mux){
 	r.Mount("/auth", router)
 
 	router.Post("/register", h.registerEndpoint)
-	router.Get("/login", h.LoginEndpoint)
+	router.Post("/login", h.LoginEndpoint)
 	router.Post("/users", h.createUserEndpoint)
 	router.Get("/users/status", h.checkExistanceEndpoint)
 	router.Delete("/users/logout", h.userLogoutEndpoint)

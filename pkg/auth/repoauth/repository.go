@@ -11,21 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-var (
-	errorCreatingUser = errors.New("there was an error creating the account for the user")
-	errorCreatingSession = errors.New("there was an error creating the session for the user")
-	errorRetrievingUserAuth = errors.New("there was an error retrieving the user auth")
-	errorNoSessionFound = errors.New("no session found")
-	errorRetrievingSession = errors.New("there was an error retrieving the session")
-	errorNoUserFoundId = errors.New("no user found with the Id")
-	errorVinculatingAccount = errors.New("there was an error vinculating the account")
-	errorDeletingSession = errors.New("there was an error deleting the session")
-	errorDeletingUserAuth = errors.New("there was an error deleting the user auth")
-	errorsNoSessionToDelete = errors.New("there's no session to delete")
-	errorNoUserAuthToDelete = errors.New("there's no user auth to delete")
-	errorUpdatingUserAuth = errors.New("there was an error updating the user account")
-)
-
 type AuthPostgresRepo struct {
 	db 		*sql.DB
 }
@@ -36,7 +21,7 @@ func NewAuthPostgresRepo(db *sql.DB) auth.AuthRepository{
 	}
 }
 
-func (r *AuthPostgresRepo) CreateUserAuth(ctx context.Context, id uuid.UUID, email string, hash string) error{
+func (r *AuthPostgresRepo) CreateUserAuth(ctx context.Context, id uuid.UUID, email string, hash string) (int, error) {
 	result, err := r.db.ExecContext(
 		ctx,
 		`INSERT INTO users_auth(id, email, hash, created_at) 
@@ -44,15 +29,14 @@ func (r *AuthPostgresRepo) CreateUserAuth(ctx context.Context, id uuid.UUID, ema
 		id, email, hash, time.Now(),
 	)
 	if err != nil{
-		return errorCreatingUser
+		log.Print("error creating user: ", err.Error())
+		return 0, err
 	}
-	if num, _ := result.RowsAffected();num == 0{
-		return errorCreatingUser
-	}
-	return nil
+	num, _ := result.RowsAffected()
+	return int(num), nil
 }
 
-func (r *AuthPostgresRepo) CreateSession(ctx context.Context,  id uuid.UUID, userId uuid.UUID, token string, device *string, os *string, expiresAt time.Time) error{
+func (r *AuthPostgresRepo) CreateSession(ctx context.Context,  id uuid.UUID, userId uuid.UUID, token string, device *string, os *string, expiresAt time.Time) (int, error){
 	result, err := r.db.ExecContext(
 		ctx,
 		`INSERT INTO sessions(id, token, device, os, expires_at, created_at, last_used, user_auth_id)
@@ -60,12 +44,11 @@ func (r *AuthPostgresRepo) CreateSession(ctx context.Context,  id uuid.UUID, use
 		id, token, device, os, expiresAt, time.Now(), time.Now(), userId,
 	)
 	if err != nil{
-		return errorCreatingSession
+		log.Print("error creating session: ", err.Error())
+		return 0, err
 	}
-	if num, _ := result.RowsAffected(); num == 0{
-		return errorCreatingSession
-	}
-	return nil
+	num, _ := result.RowsAffected()
+	return int(num), nil
 }
 
 func (r *AuthPostgresRepo) GetUserByEmail(ctx context.Context, email string) (*auth.UserAuthModel, error){
@@ -75,7 +58,7 @@ func (r *AuthPostgresRepo) GetUserByEmail(ctx context.Context, email string) (*a
 		FROM users_auth WHERE email = $1`,
 		email,
 	)
-	return r.readUser(row, auth.ErrorNoUserFoundEmail)
+	return r.readUser(row)
 }
 
 func (r *AuthPostgresRepo) GetSessionByToken(ctx context.Context, token string) (*auth.SessionModel, error){
@@ -89,9 +72,10 @@ func (r *AuthPostgresRepo) GetSessionByToken(ctx context.Context, token string) 
 
 	err := row.Scan(&model.Id, &model.Token, &model.Device, &model.Os, &model.ExpiresAt, &model.CreatedAt, &model.LastUsed, &model.UserAuthId)
 	if errors.Is(err, sql.ErrNoRows){
-		return nil, errorNoSessionFound
+		return nil, nil
 	}else if err != nil{
-		return nil, errorRetrievingSession
+		log.Print("error getting session : ", err.Error())
+		return nil, err
 	}
 	return model, nil
 }
@@ -104,71 +88,66 @@ func (r *AuthPostgresRepo) GetUserById(ctx context.Context, id uuid.UUID) (*auth
 		FROM users_auth WHERE id = $1`,
 		id,
 	)
-	return r.readUser(row, errorNoUserFoundId)
+	return r.readUser(row)
 }
 
-func (r *AuthPostgresRepo) CreateEmptyUser(ctx context.Context, id uuid.UUID, userId uuid.UUID) error{
+func (r *AuthPostgresRepo) CreateEmptyUser(ctx context.Context, id uuid.UUID, userId uuid.UUID) (int, error) {
 	result, err := r.db.ExecContext(
 		ctx, 
 		`INSERT INTO users_auth(id, user_id, created_at) VALUES($1, $2, $3)`,
 		id, userId, time.Now(),
 	)
 	if err != nil{
-		return errorCreatingUser
+		log.Print("error creating empty user: ", err.Error())
+		return 0, err
 	}
-	if num, _ := result.RowsAffected(); num == 0{
-		return errorCreatingUser
-	}
-	return nil
+	num, _ := result.RowsAffected()
+	return int(num), nil
 }
 
-func (r *AuthPostgresRepo) UpdateAuthUserId(ctx context.Context, authId uuid.UUID, userId uuid.UUID) error{
+func (r *AuthPostgresRepo) UpdateAuthUserId(ctx context.Context, authId uuid.UUID, userId uuid.UUID) (int, error){
 	result, err := r.db.ExecContext(
 		ctx, 
 		`UPDATE users_auth SET user_id = $1 WHERE id = $2`,
 		userId, authId,
 	)
 	if err != nil{
-		log.Print(err)
-		return errorVinculatingAccount
+		log.Print("error vinculating account: ", err.Error())
+		return 0, err
 	}
-	if num, _ := result.RowsAffected(); num != 1{
-		return errorVinculatingAccount
-	}
-	return nil
+	num, _ := result.RowsAffected()
+	return int(num), nil
 }
 
-func (r *AuthPostgresRepo) DeleteSessionById(ctx context.Context, sessionId uuid.UUID) error{
+func (r *AuthPostgresRepo) DeleteSessionById(ctx context.Context, sessionId uuid.UUID) (int, error){
 	result, err := r.db.ExecContext(
 		ctx, 
 		`DELETE FROM sessions WHERE id = $1`, 
 		sessionId,
 	)
 	if err != nil{
-		return errorDeletingSession
+		log.Print("error deleting session: ", err.Error())
+		return 0, err
 	}
-	if num, _ := result.RowsAffected(); num == 0{
-		return errorsNoSessionToDelete
-	}
-	return nil
+	num, _ := result.RowsAffected()
+	return int(num), nil
 }
 
-func (r *AuthPostgresRepo) DeleteUserAuthById(ctx context.Context, authId uuid.UUID) error{
+func (r *AuthPostgresRepo) DeleteUserAuthById(ctx context.Context, authId uuid.UUID) (int, error){
 	result, err := r.db.ExecContext(
 		ctx, 
 		`DELETE FROM users_auth WHERE id = $1`, 
 		authId,
 	)
 	if err != nil{
-		return errorDeletingUserAuth
+		log.Print("error deleting account: ", err.Error())
+		return 0, err
 	}
-	if num, _ := result.RowsAffected(); num == 0{
-		return errorNoUserAuthToDelete
-	}
-	return nil
+	num, _ := result.RowsAffected()
+	return int(num), nil
 }
 
-func (r *AuthPostgresRepo) UpdateAuthUserById(ctx context.Context, authId uuid.UUID, authModel *auth.UserAuthModel) error{
+func (r *AuthPostgresRepo) UpdateAuthUserById(ctx context.Context, authId uuid.UUID, authModel *auth.UserAuthModel) (int, error){
 	result, err := r.db.ExecContext(
 		ctx,
 		`UPDATE users_auth SET email = $1, hash = $2, oauth_provider = $3, oauth_id = $4
@@ -176,12 +155,11 @@ func (r *AuthPostgresRepo) UpdateAuthUserById(ctx context.Context, authId uuid.U
 		authModel.Email, authModel.Hash, authModel.OauthProvider, authModel.OauthId, authId,
 	)
 	if err != nil{
-		return errorUpdatingUserAuth
+		log.Print("error updating account: ", err.Error())
+		return 0, err
 	}
-	if num, _ := result.RowsAffected(); num == 0{
-		return errorUpdatingUserAuth
-	}
-	return nil
+	num, _ := result.RowsAffected()
+	return int(num), nil
 }
 
 func (r *AuthPostgresRepo) GetSessionById(ctx context.Context, id uuid.UUID) (*auth.SessionModel, error){
@@ -195,24 +173,25 @@ func (r *AuthPostgresRepo) GetSessionById(ctx context.Context, id uuid.UUID) (*a
 
 	err := row.Scan(&model.Id, &model.Token, &model.Device, &model.Os, &model.ExpiresAt, &model.CreatedAt, &model.LastUsed, &model.UserAuthId)
 	if errors.Is(err, sql.ErrNoRows){
-		return nil, errorNoSessionFound
+		return nil, nil
 	}else if err != nil{
-		return nil, errorRetrievingSession
+		log.Print("error getting session: ", err.Error())
+		return nil, err
 	}
 	return model, nil
 }
 
 ///////////////////// HELPERS
 
-func (r *AuthPostgresRepo) readUser(row *sql.Row, caseError error) (*auth.UserAuthModel, error){
+func (r *AuthPostgresRepo) readUser(row *sql.Row) (*auth.UserAuthModel, error){
 	model := new(auth.UserAuthModel)
 	err := row.Scan(&model.Id, &model.Email, &model.Hash, &model.OauthProvider, &model.OauthId, &model.CreatedAt, &model.UserId)
 	if err == sql.ErrNoRows{
-		return nil, caseError
+		return nil, nil
 	}
 	if err != nil{
-		log.Print(err)
-		return nil, errorRetrievingUserAuth
+		log.Print("error reading user: ", err.Error())
+		return nil, err
 	}
 	return model, nil
 }

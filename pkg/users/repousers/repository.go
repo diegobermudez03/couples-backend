@@ -12,22 +12,6 @@ import (
 )
 
 
-var (
-	errorCreatingUser = errors.New("there was an error creating the user")
-	errorDeletingUser = errors.New("there was an error deleting the user")
-	errorNoCodeAssociated = errors.New("the code is not associated with any temp couple")
-	errorCheckingTempCouple = errors.New("there was an error checking the temp couple")
-	errorGeneratingCode = errors.New("there was an error generating the couple's code")
-	errorRettrievingCouple = errors.New("there was an error retrieving the couple")
-	errorDeletingTempCouple = errors.New("there was an error deleting the temp couple")
-	errorNoTempCoupleDeleted = errors.New("there was no temp couple to delete")
-	errorNoUserToDelete = errors.New("there's no user to delete")
-	errorCreatingCouple = errors.New("there was an error creating the couple")
-	errorAddingPoints = errors.New("there was an error adding the points")
-	errorNoUserFound = errors.New("no user found")
-	errorUpdatingNickname = errors.New("there was an error updating the nickname")
-)
-
 type UsersPostgresRepo struct {
 	db *sql.DB
 }
@@ -38,7 +22,7 @@ func NewUsersPostgresRepo(db *sql.DB) users.UsersRepo{
 	}
 }
 
-func (r *UsersPostgresRepo) CreateUser(ctx context.Context, user *users.UserModel) error{
+func (r *UsersPostgresRepo) CreateUser(ctx context.Context, user *users.UserModel) (int, error){
 	result, err := r.db.ExecContext(
 		ctx, 
 		`INSERT INTO users(id, first_name, last_name, gender, birth_date, created_at, active, country_code, language_code, nickname)
@@ -46,28 +30,25 @@ func (r *UsersPostgresRepo) CreateUser(ctx context.Context, user *users.UserMode
 		user.Id, user.FirstName, user.LastName, user.Gender, user.BirthDate, user.CreatedAt, user.Active, user.CountryCode, user.LanguageCode, user.NickName,
 	)
 	if err != nil {
-		return errorCreatingUser
+		log.Print("error creating user: ", err.Error())
+		return 0, err
 	}
-	if num, _ := result.RowsAffected(); num == 0{
-		return errorCreatingUser
-	}
-	return nil
+	num, _ := result.RowsAffected()
+	return int(num), nil
 }
 
-func (r *UsersPostgresRepo) DeleteUserById(ctx context.Context, userId uuid.UUID) error{
+func (r *UsersPostgresRepo) DeleteUserById(ctx context.Context, userId uuid.UUID) (int, error){
 	result, err := r.db.ExecContext(
 		ctx, 
 		`DELETE FROM users WHERE id = $1`,
 		userId,
 	)
 	if err != nil{
-		return errorDeletingUser
+		log.Print("error deleting user: ", err.Error())
+		return 0, err
 	}
-
-	if num, _ := result.RowsAffected(); num == 0{
-		return errorNoUserToDelete
-	}
-	return nil
+	num, _ := result.RowsAffected()
+	return int(num), nil
 }
 
 func (r *UsersPostgresRepo) GetTempCoupleByCode(ctx context.Context, code int) (*users.TempCoupleModel, error){
@@ -78,8 +59,12 @@ func (r *UsersPostgresRepo) GetTempCoupleByCode(ctx context.Context, code int) (
 		code,
 	)
 	tempCouple := new(users.TempCoupleModel) 
-	if err := row.Scan(&tempCouple.UserId, &tempCouple.Code, &tempCouple.StartDate, &tempCouple.CreatedAt, &tempCouple.UpdatedAt); err != nil{
-		return nil, errorNoCodeAssociated
+	err := row.Scan(&tempCouple.UserId, &tempCouple.Code, &tempCouple.StartDate, &tempCouple.CreatedAt, &tempCouple.UpdatedAt)
+	if errors.Is(err, sql.ErrNoRows){
+		return nil, nil
+	}else if err != nil{
+		log.Print("error getting couple: ", err.Error())
+		return nil, err
 	}
 	return tempCouple, nil
 }
@@ -94,39 +79,38 @@ func (r *UsersPostgresRepo) CheckTempCoupleById(ctx context.Context, userId uuid
 	if err := row.Scan(&result); errors.Is(err, sql.ErrNoRows){
 		return false, nil
 	}else if err != nil{
-		return false, errorCheckingTempCouple
+		log.Print("error checking couple: ", err.Error())
+		return false, err
 	}
 	return true, nil
 }
 
-func (r *UsersPostgresRepo) UpdateTempCouple(ctx context.Context, tempCouple *users.TempCoupleModel) error{
+func (r *UsersPostgresRepo) UpdateTempCouple(ctx context.Context, tempCouple *users.TempCoupleModel) (int, error){
 	result, err := r.db.ExecContext(
 		ctx,
 		`UPDATE temp_couples SET code = $1, start_date = $2, updated_at = $3 WHERE user_id = $4`,
 		tempCouple.Code, tempCouple.StartDate ,time.Now(), tempCouple.UserId,
 	)
 	if err != nil{
-		return errorGeneratingCode
+		log.Print("error updating couple: ", err.Error())
+		return 0, err
 	}
-	if num, _ := result.RowsAffected(); num == 0{
-		return errorGeneratingCode
-	}
-	return nil
+	num, _ := result.RowsAffected()
+	return int(num), nil
 }
 
-func (r *UsersPostgresRepo) CreateTempCouple(ctx context.Context, tempCouple *users.TempCoupleModel) error{
+func (r *UsersPostgresRepo) CreateTempCouple(ctx context.Context, tempCouple *users.TempCoupleModel) (int, error){
 	result, err := r.db.ExecContext(
 		ctx,
 		`INSERT INTO temp_couples (user_id, code, start_date, updated_at, created_at) VALUES($1, $2, $3, $4, $5)`,
 		tempCouple.UserId, tempCouple.Code, tempCouple.StartDate ,time.Now(), time.Now(),
 	)
 	if err != nil{
-		return errorGeneratingCode
+		log.Print("error creating temp couple: ", err.Error())
+		return 0, err
 	}
-	if num, _ := result.RowsAffected(); num == 0{
-		return errorGeneratingCode
-	}
-	return nil
+	num, _ := result.RowsAffected()
+	return int(num), nil
 }
 
 func (r *UsersPostgresRepo)  GetCoupleByUserId(ctx context.Context, userId uuid.UUID) (*users.CoupleModel, error){
@@ -140,29 +124,29 @@ func (r *UsersPostgresRepo)  GetCoupleByUserId(ctx context.Context, userId uuid.
 
 	err := row.Scan(&coupleModel.Id, &coupleModel.HeId, &coupleModel.SheId, &coupleModel.RelationStart, &coupleModel.EndDate)
 	if errors.Is(err, sql.ErrNoRows){
-		return nil, users.ErrorNoCoupleFound
+		return nil, nil
 	}else if err != nil{
-		return nil, errorRettrievingCouple
+		log.Print("error getting couple: ", err.Error())
+		return nil, err
 	}
 	return coupleModel, nil
 }
 
-func (r *UsersPostgresRepo)  DeleteTempCoupleById(ctx context.Context, id uuid.UUID) error{
+func (r *UsersPostgresRepo)  DeleteTempCoupleById(ctx context.Context, id uuid.UUID) (int, error){
 	result, err := r.db.ExecContext(
 		ctx, 
 		`DELETE FROM temp_couples WHERE user_id = $1`,
 		id,
 	)
 	if err != nil{
-		return errorDeletingTempCouple
+		log.Print("error deleting temp couple: ", err.Error())
+		return 0, err
 	}
-	if num, _ := result.RowsAffected(); num == 0{
-		return errorNoTempCoupleDeleted
-	}
-	return nil
+	num, _ := result.RowsAffected()
+	return int(num), nil
 }
 
-func (r *UsersPostgresRepo) CreateCouple(ctx context.Context, couple *users.CoupleModel) error{
+func (r *UsersPostgresRepo) CreateCouple(ctx context.Context, couple *users.CoupleModel) (int, error){
 	result, err := r.db.ExecContext(
 		ctx, 
 		`INSERT INTO couples(id, he_id, she_id, relation_start)
@@ -170,15 +154,14 @@ func (r *UsersPostgresRepo) CreateCouple(ctx context.Context, couple *users.Coup
 		couple.Id, couple.HeId, couple.SheId, couple.RelationStart,
 	)
 	if err != nil{
-		return errorCreatingCouple
+		log.Print("error creating couple: ", err.Error())
+		return 0, err
 	}
-	if num, _ := result.RowsAffected(); num == 0{
-		return errorCreatingCouple
-	}
-	return nil
+	num, _ := result.RowsAffected()
+	return int(num), nil
 }
 
-func (r *UsersPostgresRepo) CreateCouplePoints(ctx context.Context, points *users.PointsModel) error{
+func (r *UsersPostgresRepo) CreateCouplePoints(ctx context.Context, points *users.PointsModel) (int, error) {
 	result, err := r.db.ExecContext(
 		ctx, 
 		`INSERT INTO points(id, points, day, couple_id)
@@ -186,13 +169,11 @@ func (r *UsersPostgresRepo) CreateCouplePoints(ctx context.Context, points *user
 		points.Id, points.Points, points.Day, *points.CoupleId,
 	)
 	if err != nil{
-		log.Print(err)
-		return errorAddingPoints
+		log.Print("error creating points: ", err.Error())
+		return 0, err
 	}
-	if num, _ := result.RowsAffected(); num == 0{
-		return errorAddingPoints
-	}
-	return nil
+	num, _ := result.RowsAffected()
+	return int(num), nil
 }
 
 func (r *UsersPostgresRepo) GetUserById(ctx context.Context, userId uuid.UUID) (*users.UserModel, error){
@@ -206,8 +187,11 @@ func (r *UsersPostgresRepo) GetUserById(ctx context.Context, userId uuid.UUID) (
 	user := new(users.UserModel)
 
 	err := row.Scan(&user.Id, &user.FirstName, &user.LastName, &user.Gender, &user.BirthDate, &user.CreatedAt, &user.Active, &user.CountryCode, &user.LanguageCode, &user.NickName)
-	if err != nil{
-		return nil, errorNoUserFound
+	if errors.Is(err, sql.ErrNoRows){
+		return nil, nil
+	}else if err != nil{
+		log.Print("error getting user: ", err.Error())
+		return nil, err
 	}
 	return user, nil
 }
@@ -223,24 +207,24 @@ func (r *UsersPostgresRepo) GetCoupleById(ctx context.Context, coupleId uuid.UUI
 
 	err := row.Scan(&coupleModel.Id, &coupleModel.HeId, &coupleModel.SheId, &coupleModel.RelationStart, &coupleModel.EndDate)
 	if errors.Is(err, sql.ErrNoRows){
-		return nil, users.ErrorNoCoupleFound
+		return nil, nil
 	}else if err != nil{
-		return nil, errorRettrievingCouple
+		log.Print("error getting couple: ", err.Error())
+		return nil, err
 	}
 	return coupleModel, nil
 }
 
-func (r *UsersPostgresRepo) UpdateUserNicknameById(ctx context.Context, userId uuid.UUID, nickname string) error{
+func (r *UsersPostgresRepo) UpdateUserNicknameById(ctx context.Context, userId uuid.UUID, nickname string) (int, error){
 	result, err := r.db.ExecContext(
 		ctx,
 		`UPDATE users SET nickname = $1 WHERE id = $2`,
 		nickname, userId,
 	)
 	if err != nil{
-		return errorUpdatingNickname
+		log.Print("error updating user ", err.Error())
+		return 0, err
 	}
-	if num, _ := result.RowsAffected(); num == 0{
-		return errorUpdatingNickname
-	}
-	return nil
+	num, _ := result.RowsAffected()
+	return int(num), nil
 }

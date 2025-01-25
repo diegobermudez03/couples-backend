@@ -2,7 +2,6 @@ package appusers
 
 import (
 	"context"
-	"errors"
 	"math/rand"
 	"strings"
 	"time"
@@ -23,13 +22,7 @@ var genders = map[string]bool{
 	femaleGender : true,
 }
 
-var (
-	errorInvalidGender = errors.New("invalid gender")
-	errorTooYoung = errors.New("the user must be at least 12 years old")
-	errorUserAlreadyHasCouple = errors.New("the user already has a couple")
-	errorInvalidCode = errors.New("the couple code is invalid")
-	errorCantConnectWithYourself = errors.New("you cant connect with yourself")
-)
+
 ///////////////////////////////////////////
 
 type UsersServiceImpl struct {
@@ -51,27 +44,27 @@ func (s *UsersServiceImpl) CreateUser(
 ) (*uuid.UUID, error) {
 	lowerGender := strings.ToLower(gender)
 	if _, ok := genders[lowerGender]; !ok{
-		return nil, errorInvalidGender
+		return nil, users.ErrorInvalidGender
 	}
 	t := time.Unix(int64(birthDate), 0)
 
 	// if the users is less than 10 years old
 	if !time.Now().AddDate(-12, 0, 0).After(t){
-		return nil, errorTooYoung
+		return nil, users.ErrorTooYoung
 	}
 
 	//check lang and country
 	err1, err2 := s.localizationService.ValidateCountry(countryCode), s.localizationService.ValidateLanguage(languageCode)
 	if err1 != nil{
-		return nil, err1 
+		return nil, users.ErrorInvalidCountryCode 
 	}
 	if err2 != nil{
-		return nil, err2
+		return nil, users.ErrorInvalidLanguageCode
 	}
 
 	userId := new(uuid.UUID)
 	*userId = uuid.New()
-	err := s.usersRepo.CreateUser(
+	num, err := s.usersRepo.CreateUser(
 		ctx, 
 		&users.UserModel{
 			Id: *userId,
@@ -86,23 +79,21 @@ func (s *UsersServiceImpl) CreateUser(
 			NickName: firstName,
 		},
 	)
-	if err != nil{
-		return nil, err
+	if err != nil || num == 0 {
+		return nil, users.ErrorInvalidCreateUser
 	}
 	return userId, nil
 }
 
 func (s *UsersServiceImpl) DeleteUserById(ctx context.Context, userId uuid.UUID) error{
 	couple, err := s.usersRepo.GetCoupleByUserId(ctx, userId)
-	if !errors.Is(err, users.ErrorNoCoupleFound){
-		if couple != nil{
-			return users.ErrorUserHasActiveCouple 
-		}else{
-			return err
-		}
+	if err != nil{
+		return users.ErrorDeletingUser
+	}else if couple != nil{
+		return users.ErrorUserHasActiveCouple 
 	}
-	if err := s.usersRepo.DeleteUserById(ctx, userId); err != nil{
-		return err 
+	if num, err := s.usersRepo.DeleteUserById(ctx, userId); err != nil || num ==0{
+		return users.ErrorDeletingUser 
 	}
 	s.usersRepo.DeleteTempCoupleById(ctx, userId)
 	return nil
@@ -111,7 +102,7 @@ func (s *UsersServiceImpl) DeleteUserById(ctx context.Context, userId uuid.UUID)
 func (s *UsersServiceImpl) CreateTempCouple(ctx context.Context, userId uuid.UUID, startDate int) (int, error){
 	couple, _ := s.usersRepo.GetCoupleByUserId(ctx, userId)
 	if couple != nil{
-		return 0, errorUserAlreadyHasCouple
+		return 0, users.ErrorUserHasActiveCouple
 	}
 	var code int 
 	//unique code creation
@@ -121,9 +112,9 @@ func (s *UsersServiceImpl) CreateTempCouple(ctx context.Context, userId uuid.UUI
 			break
 		}
 	}
-	exists, err:= s.usersRepo.CheckTempCoupleById(ctx, userId)
+	exists, err := s.usersRepo.CheckTempCoupleById(ctx, userId)
 	if err != nil{
-		return 0, err 
+		return 0, users.ErrorCreatingTempCouple 
 	}
 
 	tempCouple := users.TempCoupleModel{
@@ -132,14 +123,15 @@ func (s *UsersServiceImpl) CreateTempCouple(ctx context.Context, userId uuid.UUI
 		StartDate: time.Unix(int64(startDate), 0),
 
 	}
+	var num int
 	if exists{
-		err = s.usersRepo.UpdateTempCouple(ctx, &tempCouple)
+		num, err = s.usersRepo.UpdateTempCouple(ctx, &tempCouple)
 	}else{
-		err = s.usersRepo.CreateTempCouple(ctx, &tempCouple)
+		num, err = s.usersRepo.CreateTempCouple(ctx, &tempCouple)
 	}
 
-	if err != nil{
-		return 0, err 
+	if err != nil || num == 0{
+		return 0,  users.ErrorCreatingTempCouple  
 	}
 	return code, nil
 }
@@ -153,25 +145,25 @@ func (s *UsersServiceImpl) ConnectCouple(ctx context.Context, userId uuid.UUID, 
 	// check that the user doesn't have a couple
 	coupleCheck, _ := s.usersRepo.GetCoupleByUserId(ctx, userId)
 	if coupleCheck != nil{
-		return nil, errorUserAlreadyHasCouple
+		return nil, users.ErrorUserHasActiveCouple
 	}
 	
 	tempCouple, _ := s.usersRepo.GetTempCoupleByCode(ctx, code)
 	if tempCouple == nil{
-		return nil, errorInvalidCode
+		return nil, users.ErrorInvalidCode
 	}
 	//check that the user isn't connecting with himself
 	if userId == tempCouple.UserId{
-		return nil, errorCantConnectWithYourself
+		return nil, users.ErrorCantConnectWithYourself
 	}
 	//create the couple
 	user1, err := s.usersRepo.GetUserById(ctx, userId)
 	if err != nil {
-		return nil, err 
+		return nil, users.ErrorConnectingCouple 
 	}
 	user2, err := s.usersRepo.GetUserById(ctx, tempCouple.UserId)
 	if err != nil {
-		return nil, err 
+		return nil, users.ErrorConnectingCouple 
 	}
 
 	var heId uuid.UUID
@@ -191,8 +183,8 @@ func (s *UsersServiceImpl) ConnectCouple(ctx context.Context, userId uuid.UUID, 
 		HeId: heId,
 		SheId: sheId,
 	}
-	if err := s.usersRepo.CreateCouple(ctx, couple); err != nil{
-		return nil, err 
+	if num, err := s.usersRepo.CreateCouple(ctx, couple); err != nil || num == 0{
+		return nil, users.ErrorConnectingCouple 
 	}
 
 	//delete temp couples
@@ -200,7 +192,7 @@ func (s *UsersServiceImpl) ConnectCouple(ctx context.Context, userId uuid.UUID, 
 	s.usersRepo.DeleteTempCoupleById(ctx, sheId)
 
 	//create first points
-	err = s.usersRepo.CreateCouplePoints(
+	num, err := s.usersRepo.CreateCouplePoints(
 		ctx,
 		&users.PointsModel{
 			Id: uuid.New(),
@@ -209,8 +201,8 @@ func (s *UsersServiceImpl) ConnectCouple(ctx context.Context, userId uuid.UUID, 
 			CoupleId: &coupleId,
 		},
 	)
-	if err != nil{
-		return nil, err
+	if err != nil || num == 0{
+		return nil, users.ErrorCreatingPoints
 	}
 	return &coupleId, nil
 }
@@ -218,7 +210,7 @@ func (s *UsersServiceImpl) ConnectCouple(ctx context.Context, userId uuid.UUID, 
 func (s *UsersServiceImpl) EditPartnersNickname(ctx context.Context, userId uuid.UUID, coupleId uuid.UUID, nickname string) error{
 	couple, err := s.usersRepo.GetCoupleById(ctx, coupleId)
 	if err != nil{
-		return err 
+		return users.ErrorUpdatingNickname
 	}
 	var partnerId uuid.UUID
 	if couple.HeId == userId{
@@ -227,8 +219,8 @@ func (s *UsersServiceImpl) EditPartnersNickname(ctx context.Context, userId uuid
 		partnerId = couple.HeId
 	}
 
-	if err := s.usersRepo.UpdateUserNicknameById(ctx, partnerId, nickname); err != nil{
-		return err 
+	if num, err := s.usersRepo.UpdateUserNicknameById(ctx, partnerId, nickname); err != nil || num == 0{
+		return users.ErrorUpdatingNickname 
 	}
 	return nil
 }

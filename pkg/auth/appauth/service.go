@@ -7,6 +7,7 @@ import (
 	"errors"
 	"log"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/diegobermudez03/couples-backend/pkg/auth"
@@ -14,15 +15,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
-)
-
-var (
-	errorInsecurePassword = errors.New("the password isnt secure enough")
-	errorHashingPassword = errors.New("the password couldnt be hashed")
-	errorJWTToken = errors.New("an error ocurred creating the JWT token")
-	errorEmailAlreadyUsed = errors.New("the email already has an account associated")
-	errorIncorrectPassword = errors.New("incorrect password")
-	errorUserAlreadyHasUser = errors.New("there's already an user created")
 )
 
 
@@ -47,20 +39,23 @@ func NewAuthService(authRepo auth.AuthRepository, usersService users.UsersServic
 func(s *AuthServiceImpl) RegisterUserAuth(ctx context.Context, email, password, device, os, token string) (string, error){
 	// data verifications
 	if num := len(password); num < 6 {
-		return "", errorInsecurePassword
+		return "", auth.ErrorInsecurePassword
 	}
 	if match, err := regexp.MatchString(`\d`, password); !match || err != nil {
-		return "", errorInsecurePassword
+		return "", auth.ErrorInsecurePassword
 	}
-
+	email = strings.ToLower(email)
 	// confirm email uniqueness
-	if _, err := s.authRepo.GetUserByEmail(ctx, email); err == nil || !errors.Is(err, auth.ErrorNoUserFoundEmail){
-		return "", errorEmailAlreadyUsed
+	if acc, err := s.authRepo.GetUserByEmail(ctx, email); err != nil{
+		return "", auth.ErrorCreatingAccount
+	}else if acc != nil{
+		return "", auth.ErrorEmailAlreadyUsed
 	}
 
 	hashBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil{
-		return "", errorHashingPassword
+		log.Print("error hashing password: ", err.Error())
+		return "", auth.ErrorCreatingAccount
 	}
 	hashString := string(hashBytes)
 
@@ -69,22 +64,20 @@ func(s *AuthServiceImpl) RegisterUserAuth(ctx context.Context, email, password, 
 	// check token 
 	if token != ""{
 		session, _ := s.authRepo.GetSessionByToken(ctx, token)
-		log.Print(session)
+		//if the token do have a session associated
 		if session != nil{
-			log.Print("session not null")
 			userAuth, _ := s.authRepo.GetUserById(ctx, session.UserAuthId)
-			log.Print(userAuth)
+			// if the session has an anonymous account associated
 			if userAuth != nil && s.checkIfAnonymousAuth(userAuth){
-				log.Print("user anonymous")
 				userId = userAuth.Id
 				userAuth.Email = &email
 				userAuth.Hash = &hashString
-				if err := s.authRepo.UpdateAuthUserById(
+				if num, err := s.authRepo.UpdateAuthUserById(
 					ctx,
 					userId,
 					userAuth,
-				); err != nil{
-					return "", err 
+				); err != nil || num == 0{
+					return "", auth.ErrorVinculatingAccount 
 				}
 				return token, nil
 			}
@@ -92,14 +85,14 @@ func(s *AuthServiceImpl) RegisterUserAuth(ctx context.Context, email, password, 
 	}
 	//create user auth
 	userId = uuid.New()
-	err = s.authRepo.CreateUserAuth(
+	num, err := s.authRepo.CreateUserAuth(
 		ctx,
 		userId,
 		email,
 		hashString,
 	)
-	if err != nil{
-		return "",  err
+	if err != nil || num == 0{
+		return "",  auth.ErrorCreatingAccount
 	}
 
 	//create the session
@@ -108,13 +101,16 @@ func(s *AuthServiceImpl) RegisterUserAuth(ctx context.Context, email, password, 
 
 
 func (s *AuthServiceImpl) LoginUserAuth(ctx context.Context, email string, password string, device string, os string) (string, error){
+	email = strings.ToLower(email)
 	user, err := s.authRepo.GetUserByEmail(ctx, email)
 	if err != nil{
-		return "", err
+		return "", auth.ErrorWithLogin
+	} else if err == nil && user == nil {
+		return "", auth.ErrorNoUserFoundEmail
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(*user.Hash), []byte(password)); err != nil{
-		return "", errorIncorrectPassword
+		return "", auth.ErrorIncorrectPassword
 	}
 
 	return s.createSession(ctx, user.Id, &device, &os)
@@ -123,23 +119,25 @@ func (s *AuthServiceImpl) LoginUserAuth(ctx context.Context, email string, passw
 func (s *AuthServiceImpl) CloseUsersSession(ctx context.Context, token string) error{
 	session, err := s.authRepo.GetSessionByToken(ctx, token)
 	if err != nil{
-		return err
+		return auth.ErrorWithLogout
+	} else if session == nil{
+		return auth.ErrorNonExistingSession
 	}
-	if err := s.authRepo.DeleteSessionById(ctx, session.Id); err != nil{
-		return err
-	}
+	if num, err := s.authRepo.DeleteSessionById(ctx, session.Id); err != nil || num == 0{
+		return auth.ErrorWithLogout
+	} 
 	authUser, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
-	if err != nil{
-		return err
-	}
+	if err != nil || authUser == nil{
+		return auth.ErrorWithLogout
+	} 
 	//if it's an anonymous account then delete both the account and the user
 	if s.checkIfAnonymousAuth(authUser){
-		if err := s.authRepo.DeleteUserAuthById(ctx, authUser.Id); err != nil{
-			return err 
+		if _, err := s.authRepo.DeleteUserAuthById(ctx, authUser.Id); err != nil{
+			return auth.ErrorWithLogout 
 		}
 		if authUser.UserId != nil{
 			if err := s.usersService.DeleteUserById(ctx, *authUser.UserId); err != nil{
-				return err
+				return auth.ErrorWithLogout 
 			}
 		}
 	}
@@ -149,7 +147,7 @@ func (s *AuthServiceImpl) CloseUsersSession(ctx context.Context, token string) e
 func (s *AuthServiceImpl) CreateTempCouple(ctx context.Context, token string, startDate int) (int, error){
 	userId, err := s.getUserIdFromSession(ctx, token)
 	if err != nil{
-		return 0, err  
+		return 0, auth.ErrorcreatingTempCouple  
 	}
 	if userId == nil{
 		return 0, auth.ErrorNoActiveUser
@@ -163,24 +161,24 @@ func (s *AuthServiceImpl) CreateUser(ctx context.Context, token, firstName, last
 	if session != nil{
 		userAuth, _ := s.authRepo.GetUserById(ctx, session.UserAuthId)
 		if userAuth != nil && userAuth.UserId != nil{
-			return "", errorUserAlreadyHasUser
+			return "", auth.ErrorUserForAccountAlreadyExists
 		}
 	}
 
 	// create user with users service (receives the userId)
 	userId,  err := s.usersService.CreateUser(ctx, firstName, lastName, gender, countryCode, languageCode, birthDate)
 	if err != nil{
-		return "", err 
+		return "", auth.ErrorCreatingUser 
 	}
 	//	if no token, create anonymous auth user and connect with user
 	if session != nil{
-		if err := s.authRepo.UpdateAuthUserId(ctx, session.UserAuthId, *userId); err != nil{
-			return "", err 
+		if num, err := s.authRepo.UpdateAuthUserId(ctx, session.UserAuthId, *userId); err != nil || num == 0{
+			return "", auth.ErrorCreatingUser  
 		}
 	} else{
 		authId := uuid.New()
-		if err := s.authRepo.CreateEmptyUser(ctx, authId, *userId); err != nil{
-			return "", err 
+		if num, err := s.authRepo.CreateEmptyUser(ctx, authId, *userId); err != nil || num == 0{
+			return "", auth.ErrorCreatingUser 
 		}
 		return s.createSession(ctx, authId, nil, nil)
 	}
@@ -192,7 +190,7 @@ func (s *AuthServiceImpl) CreateUser(ctx context.Context, token, firstName, last
 func (s *AuthServiceImpl) CheckUserAuthStatus(ctx context.Context, token string) (string, error){
 	userId, err := s.getUserIdFromSession(ctx, token)
 	if err != nil{
-		return "", err
+		return "", auth.ErrorCheckingStatus
 	}
 	if userId == nil{
 		return auth.StatusNoUserCreated, nil 
@@ -208,24 +206,26 @@ func (s *AuthServiceImpl) CheckUserAuthStatus(ctx context.Context, token string)
 func (s *AuthServiceImpl) ConnectCouple(ctx context.Context, token string, code int) (string, error) {
 	session, err := s.authRepo.GetSessionByToken(ctx, token)
 	if err != nil{
-		return "", err 
+		return "", auth.ErrorUnableToConnectCouple 
+	}else if session == nil{
+		return "", auth.ErrorNonExistingSession
 	}
-	auth, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
+	authUser, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
+	if err != nil || authUser == nil{
+		return "", auth.ErrorUnableToConnectCouple  
+	}
+	coupleId, err := s.usersService.ConnectCouple(ctx, *authUser.UserId, code)
 	if err != nil{
-		return "", err 
+		return "",  auth.ErrorUnableToConnectCouple  
 	}
-	coupleId, err := s.usersService.ConnectCouple(ctx, *auth.UserId, code)
-	if err != nil{
-		return "", err
-	}
-	return s.createAccessToken(*auth.UserId, *coupleId, session.Id)
+	return s.createAccessToken(*authUser.UserId, *coupleId, session.Id)
 }
 
 
 func (s *AuthServiceImpl) CreateAccessToken(ctx context.Context, token string)(string, error){
 	session, err := s.authRepo.GetSessionByToken(ctx, token)
 	if err != nil{
-		return "", err 
+		return "", auth.ErrorNonExistingSession 
 	}
 	if session.ExpiresAt.Before(time.Now()){
 		s.authRepo.DeleteSessionById(ctx, session.Id)
@@ -233,14 +233,14 @@ func (s *AuthServiceImpl) CreateAccessToken(ctx context.Context, token string)(s
 	}
 	user, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
 	if err != nil{
-		return "", err 
+		return "", auth.ErrorCreatingAccessToken 
 	}
 	if user.UserId == nil{
 		return "", auth.ErrorNoActiveUser
 	}
 	couple, err := s.usersService.GetCoupleFromUser(ctx, *user.UserId)
 	if err != nil{
-		return "", err 
+		return "", auth.ErrorCreatingAccessToken 
 	}
 	if couple == nil {
 		return "", auth.ErrorNoActiveCoupleFromUser
@@ -268,17 +268,17 @@ func (s *AuthServiceImpl) ValidateAccessToken(ctx context.Context, accessTokenSt
 func (s *AuthServiceImpl) LogoutSession(ctx context.Context, sessionId uuid.UUID) error{
 	session, err := s.authRepo.GetSessionById(ctx, sessionId)
 	if err != nil{
-		return err 
+		return auth.ErrorWithLogout 
 	}
 	authUser, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
-	if err != nil{
-		return err 
+	if err != nil || authUser == nil{
+		return auth.ErrorWithLogout  
 	}
 	if s.checkIfAnonymousAuth(authUser){
 		return auth.ErrorCantLogoutAnonymousAcc
 	}
-	if err := s.authRepo.DeleteSessionById(ctx, session.Id); err != nil{
-		return err 
+	if num, err := s.authRepo.DeleteSessionById(ctx, session.Id); err != nil || num == 0{
+		return auth.ErrorWithLogout  
 	}
 	return nil
 }
@@ -297,7 +297,7 @@ func (s *AuthServiceImpl) createSession(ctx context.Context, authId uuid.UUID, d
 		randomBytes := make([]byte, 32)
 		_, err := rand.Read(randomBytes) 
 		if err != nil{
-			return "", err
+			return "", auth.ErrorCreatingSession 
 		}
 		token = base64.URLEncoding.EncodeToString(randomBytes)
 		session, _ := s.authRepo.GetSessionByToken(ctx, token)
@@ -306,7 +306,7 @@ func (s *AuthServiceImpl) createSession(ctx context.Context, authId uuid.UUID, d
 		}
 	}
 	
-	err := s.authRepo.CreateSession(
+	num, err := s.authRepo.CreateSession(
 		ctx, 
 		uuid.New(),
 		authId,
@@ -315,8 +315,8 @@ func (s *AuthServiceImpl) createSession(ctx context.Context, authId uuid.UUID, d
 		os,
 		time.Now().Add(time.Duration(s.refreshTokenLife) * time.Hour),
 	)
-	if err != nil{
-		return "", err 
+	if err != nil || num == 0{
+		return "", auth.ErrorCreatingSession 
 	}
 	return token, nil
 }
@@ -334,7 +334,7 @@ func (s *AuthServiceImpl) createAccessToken(userId uuid.UUID, coupleId uuid.UUID
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(s.jwtSecret))
 	if err != nil{
-		return "", errorJWTToken
+		return "", auth.ErrorCreatingAccessToken
 	}
 	return tokenString, nil
 }

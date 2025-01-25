@@ -29,23 +29,23 @@ type AuthService interface {
 }
 
 type AuthRepository interface {
-	CreateUserAuth(ctx context.Context, id uuid.UUID, email string, hash string) error
-	CreateEmptyUser(ctx context.Context, id uuid.UUID, userId uuid.UUID) error
-	CreateSession(ctx context.Context, id uuid.UUID, userId uuid.UUID, token string, device *string, os *string, expiresAt time.Time) error
+	CreateUserAuth(ctx context.Context, id uuid.UUID, email string, hash string) (int, error)
+	CreateEmptyUser(ctx context.Context, id uuid.UUID, userId uuid.UUID) (int, error)
+	CreateSession(ctx context.Context, id uuid.UUID, userId uuid.UUID, token string, device *string, os *string, expiresAt time.Time) (int, error)
 	GetUserByEmail(ctx context.Context, email string) (*UserAuthModel, error)
 	GetUserById(ctx context.Context, id uuid.UUID) (*UserAuthModel, error)
 	GetSessionByToken(ctx context.Context, token string) (*SessionModel, error)
 	GetSessionById(ctx context.Context, id uuid.UUID) (*SessionModel, error)
-	UpdateAuthUserId(ctx context.Context, authId uuid.UUID, userId uuid.UUID) error
-	DeleteSessionById(ctx context.Context, sessionId uuid.UUID) error
-	DeleteUserAuthById(ctx context.Context, authId uuid.UUID) error
-	UpdateAuthUserById(ctx context.Context, authId uuid.UUID, authModel *UserAuthModel) error
+	UpdateAuthUserId(ctx context.Context, authId uuid.UUID, userId uuid.UUID) (int, error)
+	DeleteSessionById(ctx context.Context, sessionId uuid.UUID) (int, error)
+	DeleteUserAuthById(ctx context.Context, authId uuid.UUID) (int, error)
+	UpdateAuthUserById(ctx context.Context, authId uuid.UUID, authModel *UserAuthModel) (int, error)
 }
 
 
 ///// messages
 const (
-	StatusNoUserCreated = "there's no user associated"
-	StatusUserCreated = "user has an user associated"
-	StatusCoupleCreated = "user has a couple associated"
+	StatusNoUserCreated = "NO_USER_ASSOCIATED"
+	StatusUserCreated = "USER_ASSOCIATED"
+	StatusCoupleCreated = "COUPLE_CREATED"
 )

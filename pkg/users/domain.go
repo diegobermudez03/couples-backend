@@ -20,19 +20,19 @@ type UsersService interface {
 }
 
 type UsersRepo interface{
-	CreateUser(ctx context.Context, user *UserModel) error
-	DeleteUserById(ctx context.Context, userId uuid.UUID) error
+	CreateUser(ctx context.Context, user *UserModel) (int, error)
+	DeleteUserById(ctx context.Context, userId uuid.UUID) (int, error)
 	GetTempCoupleByCode(ctx context.Context, code int) (*TempCoupleModel, error)
 	CheckTempCoupleById(ctx context.Context, userId uuid.UUID) (exists bool, err error)
-	UpdateTempCouple(ctx context.Context, tempCouple *TempCoupleModel) error
-	CreateTempCouple(ctx context.Context, tempCouple *TempCoupleModel) error
+	UpdateTempCouple(ctx context.Context, tempCouple *TempCoupleModel) (int, error)
+	CreateTempCouple(ctx context.Context, tempCouple *TempCoupleModel) (int, error)
 	GetCoupleByUserId(ctx context.Context, userId uuid.UUID) (*CoupleModel, error)
-	DeleteTempCoupleById(ctx context.Context, id uuid.UUID) error
+	DeleteTempCoupleById(ctx context.Context, id uuid.UUID) (int, error)
 	GetUserById(ctx context.Context, userId uuid.UUID) (*UserModel, error)
-	CreateCouple(ctx context.Context, couple *CoupleModel) error
-	CreateCouplePoints(ctx context.Context, points *PointsModel) error
+	CreateCouple(ctx context.Context, couple *CoupleModel) (int, error)
+	CreateCouplePoints(ctx context.Context, points *PointsModel) (int, error)
 	GetCoupleById(ctx context.Context, coupleId uuid.UUID) (*CoupleModel, error)
-	UpdateUserNicknameById(ctx context.Context, userId uuid.UUID, nickname string) error
+	UpdateUserNicknameById(ctx context.Context, userId uuid.UUID, nickname string) (int, error)
 }
 
 
