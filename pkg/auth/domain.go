@@ -19,14 +19,15 @@ type AuthService interface {
 	RegisterUserAuth(ctx context.Context, email, password, device, os, token string) (refreshToken string, err error)
 	LoginUserAuth(ctx context.Context, email string, password string, device string, os string) (refreshToken string, err error)
 	CloseUsersSession(ctx context.Context, token string) (error)
-	CreateTempCouple(ctx context.Context, token string, startDate int) (int, error)
+	CreateTempCouple(ctx context.Context, token string, startDate int) (int, chan uuid.UUID, *uuid.UUID, error)
 	CreateUser(ctx context.Context, token, firstName, lastName, gender, countryCode, languageCode string,birthDate int,) (refrshToken string, err error)
 	ConnectCouple(ctx context.Context, token string, code int) (accessToken string, err error)
 	CheckUserAuthStatus(ctx context.Context, token string) (string, error)
 	CreateAccessToken(ctx context.Context, token string)(string, error)
 	ValidateAccessToken(ctx context.Context, accessTokenString string) (*AccessClaims, error)
-	GetTempCoupleOfUser(ctx context.Context, token string)(*TempCoupleModel, error)
+	GetTempCoupleOfUser(ctx context.Context, token string)(*TempCoupleModel, chan uuid.UUID, *uuid.UUID, error)
 	LogoutSession(ctx context.Context, sessionId uuid.UUID) error
+	RemoveCodeSuscriber(userId uuid.UUID)
 }
 
 type AuthRepository interface {

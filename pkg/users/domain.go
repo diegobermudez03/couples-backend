@@ -16,7 +16,7 @@ type UsersService interface {
 	DeleteUserById(ctx context.Context, userId uuid.UUID) error
 	GetCoupleFromUser(ctx context.Context, userId uuid.UUID) (*CoupleModel, error)
 	GetTempCoupleFromUser(ctx context.Context, userId uuid.UUID)(*TempCoupleModel, error)
-	ConnectCouple(ctx context.Context, userId uuid.UUID, code int)(*uuid.UUID, error)
+	ConnectCouple(ctx context.Context, userId uuid.UUID, code int)(coupleId *uuid.UUID, partnerId *uuid.UUID, err error)
 	EditPartnersNickname(ctx context.Context, userId uuid.UUID, coupleId uuid.UUID, nickname string) error
 	CheckPartnerNickname(ctx context.Context, userId uuid.UUID) (hasNickname bool, err error)
 }

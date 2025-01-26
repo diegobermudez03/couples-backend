@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/diegobermudez03/couples-backend/internal/http/middlewares"
 	"github.com/diegobermudez03/couples-backend/internal/utils"
@@ -195,26 +198,32 @@ func (h *AuthHandler) getTempCoupleCodeEndpoint(w http.ResponseWriter, r *http.R
 		utils.WriteError(w, http.StatusBadRequest, errors.New("no token provided"))
 		return 
 	}
-	tempCouple, err := h.authService.GetTempCoupleOfUser(r.Context(), token)
+	tempCouple, channel, userId, err := h.authService.GetTempCoupleOfUser(r.Context(), token)
 	if err != nil{
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return 
 	}
-	utils.WriteJSON(
-		w,
-		http.StatusCreated,
-		tempCouple,
-	)
+	if tempCouple == nil{
+		utils.WriteJSON(
+			w,
+			http.StatusOK,
+			nil,
+		)
+	}
+	jsonTempCouple, _ := json.Marshal(tempCouple)
+
+	h.setSSECode(w, r, string(jsonTempCouple), channel, *userId)
 }
 
 
 func (h *AuthHandler) postTempCoupleCodeEndpoint(w http.ResponseWriter, r *http.Request){
+	//if no token we dont open sse
 	token := r.Header.Get("token")
 	if token == ""{
 		utils.WriteError(w, http.StatusBadRequest, errors.New("no token provided"))
 		return 
 	}
-
+	//IF NO PAYLOAD WE DONT OPEN SSE
 	payload := struct{
 		StartDate	int `json:"startDate" validate:"required"`
 	}{}
@@ -222,18 +231,15 @@ func (h *AuthHandler) postTempCoupleCodeEndpoint(w http.ResponseWriter, r *http.
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return 
 	}
-	code, err := h.authService.CreateTempCouple(r.Context(), token, payload.StartDate)
+
+	///WE CREATE THE COUPLE
+	code, channel, userId, err := h.authService.CreateTempCouple(r.Context(), token, payload.StartDate)
 	if err != nil{
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return 
 	}
-	utils.WriteJSON(
-		w,
-		http.StatusCreated,
-		map[string]int{
-			"code" : code,
-		},
-	)
+
+	h.setSSECode(w, r, strconv.Itoa(code), channel, *userId)
 }
 
 
@@ -285,4 +291,36 @@ func (h *AuthHandler) logoutEndpoint(w http.ResponseWriter, r *http.Request){
 		return 
 	}
 	utils.WriteJSON(w, http.StatusNoContent, nil)
+}
+
+////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+/////////////////////// PRIVATE FUNCTIONS
+
+func (h *AuthHandler) setSSECode(w http.ResponseWriter, r *http.Request, payload string, channel chan uuid.UUID, userId uuid.UUID){
+	// SETTING SSE
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
+	}
+
+	w.Write([]byte(fmt.Sprintf("data: %s\n\n", payload)))
+	flusher.Flush()
+	
+	clientGone := r.Context().Done()
+	select{
+	case <- clientGone:
+		fmt.Println("Client closed connection")
+		h.authService.RemoveCodeSuscriber(userId)
+	case <- channel:
+		w.Write([]byte("data: VINCULATED\n\n"))
+		flusher.Flush()
+		w.Write([]byte("event:close\ndata: Connection closing\n\n"))
+		flusher.Flush()
+	}
 }

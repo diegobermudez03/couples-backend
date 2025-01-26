@@ -24,7 +24,9 @@ type AuthServiceImpl struct {
 	accessTokenLife 	int64
 	refreshTokenLife 	int64
 	jwtSecret 			string
+	codeSuscribers 		map[uuid.UUID] chan uuid.UUID
 }
+
 
 func NewAuthService(authRepo auth.AuthRepository, usersService users.UsersService, accessTokenLife int64, refreshTokenLife int64) auth.AuthService{
 	return &AuthServiceImpl{
@@ -32,6 +34,7 @@ func NewAuthService(authRepo auth.AuthRepository, usersService users.UsersServic
 		usersService: usersService,
 		accessTokenLife: accessTokenLife,
 		refreshTokenLife : refreshTokenLife,
+		codeSuscribers: make(map[uuid.UUID] chan uuid.UUID),
 	}
 }
 
@@ -144,15 +147,18 @@ func (s *AuthServiceImpl) CloseUsersSession(ctx context.Context, token string) e
 	return nil
 }
 
-func (s *AuthServiceImpl) CreateTempCouple(ctx context.Context, token string, startDate int) (int, error){
+func (s *AuthServiceImpl) CreateTempCouple(ctx context.Context, token string, startDate int) (int, chan uuid.UUID, *uuid.UUID, error){
 	userId, err := s.getUserIdFromSession(ctx, token)
 	if err != nil{
-		return 0, auth.ErrorcreatingTempCouple  
+		return 0, nil, nil, auth.ErrorcreatingTempCouple  
 	}
 	if userId == nil{
-		return 0, auth.ErrorNoActiveUser
+		return 0, nil, nil, auth.ErrorNoActiveUser
 	}
-	return s.usersService.CreateTempCouple(ctx, *userId, startDate)
+	channel := make(chan uuid.UUID)
+	s.codeSuscribers[*userId] = channel
+	code, err := s.usersService.CreateTempCouple(ctx, *userId, startDate)
+	return code, channel, userId,  err
 }
 
 func (s *AuthServiceImpl) CreateUser(ctx context.Context, token, firstName, lastName, gender, countryCode, languageCode string,birthDate int,) (string, error){
@@ -218,9 +224,13 @@ func (s *AuthServiceImpl) ConnectCouple(ctx context.Context, token string, code 
 	if err != nil || authUser == nil{
 		return "", auth.ErrorUnableToConnectCouple  
 	}
-	coupleId, err := s.usersService.ConnectCouple(ctx, *authUser.UserId, code)
+	coupleId, partnerId, err := s.usersService.ConnectCouple(ctx, *authUser.UserId, code)
 	if err != nil{
 		return "",  auth.ErrorUnableToConnectCouple  
+	}
+	channel, ok := s.codeSuscribers[*partnerId]
+	if ok{
+		channel <- *authUser.UserId
 	}
 	return s.createAccessToken(*authUser.UserId, *coupleId, session.Id)
 }
@@ -288,24 +298,34 @@ func (s *AuthServiceImpl) LogoutSession(ctx context.Context, sessionId uuid.UUID
 }
 
 
-func (s *AuthServiceImpl) GetTempCoupleOfUser(ctx context.Context, token string)(*auth.TempCoupleModel, error){
+func (s *AuthServiceImpl) GetTempCoupleOfUser(ctx context.Context, token string)(*auth.TempCoupleModel, chan uuid.UUID, *uuid.UUID, error){
 	userId, err := s.getUserIdFromSession(ctx, token)
 	if err != nil{
-		return nil, auth.ErrorGettingTempCouple
+		return nil, nil, nil, auth.ErrorGettingTempCouple
 	}
 	tempCouple, err:= s.usersService.GetTempCoupleFromUser(ctx, *userId)
 	if err != nil{
-		return nil, auth.ErrorGettingTempCouple
+		return nil, nil, nil, auth.ErrorGettingTempCouple
 	}else if tempCouple == nil{
-		return nil, nil
+		return nil, nil, nil, nil
 	}
 	tempCoupleAuth := new(auth.TempCoupleModel)
 	*tempCoupleAuth = auth.TempCoupleModel{
 		Code: tempCouple.Code,
 		StartDate: tempCouple.StartDate,
 	}
-	return tempCoupleAuth, nil
+	channel := make(chan uuid.UUID)
+	s.codeSuscribers[*userId] = channel
+	return tempCoupleAuth, channel,  userId, nil
 
+}
+
+func (s *AuthServiceImpl) RemoveCodeSuscriber(userId uuid.UUID){
+	channel, ok := s.codeSuscribers[userId]
+	if ok{
+		delete(s.codeSuscribers, userId)
+		close(channel)
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
