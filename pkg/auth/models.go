@@ -26,3 +26,8 @@ type SessionModel struct {
 	LastUsed 	time.Time 
 	UserAuthId 	uuid.UUID
 }
+
+type TempCoupleModel struct{
+	Code 		int 		`json:"code"`
+	StartDate 	time.Time 	`json:"startDate"`
+}

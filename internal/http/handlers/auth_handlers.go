@@ -32,8 +32,9 @@ func (h *AuthHandler) RegisterRoutes(r *chi.Mux){
 	router.Post("/users", h.createUserEndpoint)
 	router.Get("/users/status", h.checkExistanceEndpoint)
 	router.Delete("/users/logout", h.userLogoutEndpoint)
+	router.Post("/couples/temporal", h.postTempCoupleCodeEndpoint)
 	router.Get("/couples/temporal", h.getTempCoupleCodeEndpoint)
-	router.Post("/couples/temporal", h.connectWithCoupleEndpoint)
+	router.Post("/couples/connect", h.connectWithCoupleEndpoint)
 	router.Get("/accessToken", h.getAccessTokenEndpoint)
 	router.With(h.middlewares.CheckAccessToken).Delete("/logout", h.logoutEndpoint)
 
@@ -194,6 +195,25 @@ func (h *AuthHandler) getTempCoupleCodeEndpoint(w http.ResponseWriter, r *http.R
 		utils.WriteError(w, http.StatusBadRequest, errors.New("no token provided"))
 		return 
 	}
+	tempCouple, err := h.authService.GetTempCoupleOfUser(r.Context(), token)
+	if err != nil{
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return 
+	}
+	utils.WriteJSON(
+		w,
+		http.StatusCreated,
+		tempCouple,
+	)
+}
+
+
+func (h *AuthHandler) postTempCoupleCodeEndpoint(w http.ResponseWriter, r *http.Request){
+	token := r.Header.Get("token")
+	if token == ""{
+		utils.WriteError(w, http.StatusBadRequest, errors.New("no token provided"))
+		return 
+	}
 
 	payload := struct{
 		StartDate	int `json:"startDate" validate:"required"`
@@ -202,7 +222,6 @@ func (h *AuthHandler) getTempCoupleCodeEndpoint(w http.ResponseWriter, r *http.R
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return 
 	}
-
 	code, err := h.authService.CreateTempCouple(r.Context(), token, payload.StartDate)
 	if err != nil{
 		utils.WriteError(w, http.StatusInternalServerError, err)

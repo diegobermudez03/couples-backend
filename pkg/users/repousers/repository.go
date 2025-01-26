@@ -228,3 +228,21 @@ func (r *UsersPostgresRepo) UpdateUserNicknameById(ctx context.Context, userId u
 	num, _ := result.RowsAffected()
 	return int(num), nil
 }
+
+func (r *UsersPostgresRepo) GetTempCoupleFromUser(ctx context.Context, userId uuid.UUID)(*users.TempCoupleModel, error){
+	row := r.db.QueryRowContext(
+		ctx,
+		`SELECT user_id, code, start_date, updated_at, created_at
+		FROM temp_couples WHERE user_id = $1`,
+		userId,
+	)
+	tempCouple := new(users.TempCoupleModel)
+	if err := row.Scan(&tempCouple.UserId, &tempCouple.Code, &tempCouple.StartDate, &tempCouple.UpdatedAt, &tempCouple.CreatedAt); err != nil{
+		if errors.Is(err, sql.ErrNoRows){
+			return nil, nil 
+		}else{
+			return nil, err 
+		}
+	}
+	return tempCouple, nil
+}

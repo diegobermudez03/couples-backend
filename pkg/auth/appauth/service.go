@@ -105,7 +105,7 @@ func (s *AuthServiceImpl) LoginUserAuth(ctx context.Context, email string, passw
 	user, err := s.authRepo.GetUserByEmail(ctx, email)
 	if err != nil{
 		return "", auth.ErrorWithLogin
-	} else if err == nil && user == nil {
+	} else if user == nil {
 		return "", auth.ErrorNoUserFoundEmail
 	}
 
@@ -168,7 +168,7 @@ func (s *AuthServiceImpl) CreateUser(ctx context.Context, token, firstName, last
 	// create user with users service (receives the userId)
 	userId,  err := s.usersService.CreateUser(ctx, firstName, lastName, gender, countryCode, languageCode, birthDate)
 	if err != nil{
-		return "", auth.ErrorCreatingUser 
+		return "", err //sending other's domain ERROR 
 	}
 	//	if no token, create anonymous auth user and connect with user
 	if session != nil{
@@ -198,6 +198,10 @@ func (s *AuthServiceImpl) CheckUserAuthStatus(ctx context.Context, token string)
 	couple, _ := s.usersService.GetCoupleFromUser(ctx, *userId)
 	if couple == nil{
 		return auth.StatusUserCreated, nil 
+	}
+	partnerHasNickname, err := s.usersService.CheckPartnerNickname(ctx, *userId)
+	if err != nil && !partnerHasNickname{
+		return auth.StatusPartnerWithoutNickname, nil
 	}
 	return auth.StatusCoupleCreated, nil
 
@@ -283,6 +287,26 @@ func (s *AuthServiceImpl) LogoutSession(ctx context.Context, sessionId uuid.UUID
 	return nil
 }
 
+
+func (s *AuthServiceImpl) GetTempCoupleOfUser(ctx context.Context, token string)(*auth.TempCoupleModel, error){
+	userId, err := s.getUserIdFromSession(ctx, token)
+	if err != nil{
+		return nil, auth.ErrorGettingTempCouple
+	}
+	tempCouple, err:= s.usersService.GetTempCoupleFromUser(ctx, *userId)
+	if err != nil{
+		return nil, auth.ErrorGettingTempCouple
+	}else if tempCouple == nil{
+		return nil, nil
+	}
+	tempCoupleAuth := new(auth.TempCoupleModel)
+	*tempCoupleAuth = auth.TempCoupleModel{
+		Code: tempCouple.Code,
+		StartDate: tempCouple.StartDate,
+	}
+	return tempCoupleAuth, nil
+
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////

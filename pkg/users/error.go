@@ -3,7 +3,7 @@ package users
 import "errors"
 
 var (
-	ErrorInvalidCreateUser = errors.New("INVALID_TO_CREATE_USER")
+	ErrorUnableCreateUser = errors.New("UNABLE_TO_CREATE_USER")
 	ErrorInvalidCountryCode = errors.New("INVALID_COUNTRY_CODE")
 	ErrorInvalidLanguageCode = errors.New("INVALID_LANG_CODE")
 	ErrorInvalidGender = errors.New("INVALID_GENDER")
@@ -17,4 +17,6 @@ var (
 	ErrorConnectingCouple = errors.New("UNABLE_TO_CONNECT_COUPLE")
 	ErrorCreatingPoints = errors.New("UNABLE_TO_ADD_POINTS")
 	ErrorUpdatingNickname = errors.New("UNABLE_TO_EDIT_NICKNAME")
+	ErrorUnableToCheckPartnerNickname = errors.New("UNABLE_TO_CHECK_PARTNER_NICKNAME")
+	ErrorUnableToGetTempCouple = errors.New("UNABLE_TO_GET_TEMP_COUPLE")
 )

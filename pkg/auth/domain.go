@@ -25,6 +25,7 @@ type AuthService interface {
 	CheckUserAuthStatus(ctx context.Context, token string) (string, error)
 	CreateAccessToken(ctx context.Context, token string)(string, error)
 	ValidateAccessToken(ctx context.Context, accessTokenString string) (*AccessClaims, error)
+	GetTempCoupleOfUser(ctx context.Context, token string)(*TempCoupleModel, error)
 	LogoutSession(ctx context.Context, sessionId uuid.UUID) error
 }
 
@@ -48,4 +49,5 @@ const (
 	StatusNoUserCreated = "NO_USER_ASSOCIATED"
 	StatusUserCreated = "USER_ASSOCIATED"
 	StatusCoupleCreated = "COUPLE_CREATED"
+	StatusPartnerWithoutNickname = "PARTNER_WITHOUT_NICKNAME"
 )

@@ -26,4 +26,5 @@ var (
 	ErrorNonExistingSession = errors.New("NON_EXISTING_SESSION")
 	ErrorUserForAccountAlreadyExists = errors.New("ACCOUNT_ALREADY_HAS_USER")
 	ErrorUnableToConnectCouple = errors.New("UNABLE_TO_CONNECT_COUPLE")
+	ErrorGettingTempCouple = errors.New("UNABLE_TO_GET_CODE_COUPLE")
 )

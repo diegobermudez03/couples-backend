@@ -49,7 +49,7 @@ func (s *UsersServiceImpl) CreateUser(
 	t := time.Unix(int64(birthDate), 0)
 
 	// if the users is less than 10 years old
-	if !time.Now().AddDate(-12, 0, 0).After(t){
+	if !time.Now().AddDate(-14, 0, 0).After(t){
 		return nil, users.ErrorTooYoung
 	}
 
@@ -80,7 +80,7 @@ func (s *UsersServiceImpl) CreateUser(
 		},
 	)
 	if err != nil || num == 0 {
-		return nil, users.ErrorInvalidCreateUser
+		return nil, users.ErrorUnableCreateUser
 	}
 	return userId, nil
 }
@@ -108,7 +108,7 @@ func (s *UsersServiceImpl) CreateTempCouple(ctx context.Context, userId uuid.UUI
 	//unique code creation
 	for{
 		code = rand.Intn(89999) + 10000
-		if _,err := s.usersRepo.GetTempCoupleByCode(ctx, code); err != nil{
+		if couple,err := s.usersRepo.GetTempCoupleByCode(ctx, code); err == nil && couple == nil{
 			break
 		}
 	}
@@ -223,4 +223,34 @@ func (s *UsersServiceImpl) EditPartnersNickname(ctx context.Context, userId uuid
 		return users.ErrorUpdatingNickname 
 	}
 	return nil
+}
+
+
+func (s *UsersServiceImpl)  CheckPartnerNickname(ctx context.Context, userId uuid.UUID) (hasNickname bool, err error){
+	couple, err := s.usersRepo.GetCoupleByUserId(ctx, userId)
+	if err != nil{
+		return false, users.ErrorUnableToCheckPartnerNickname
+	}
+	var partnerId uuid.UUID
+	if couple.HeId == userId{
+		partnerId = couple.SheId
+	}else{
+		partnerId = couple.HeId
+	}
+	partner, err := s.usersRepo.GetUserById(ctx, partnerId)
+	if err != nil{
+		return false, users.ErrorUnableToCheckPartnerNickname
+	}
+	return partner.NickName != "", nil
+}
+
+
+func(s *UsersServiceImpl)  GetTempCoupleFromUser(ctx context.Context, userId uuid.UUID)(*users.TempCoupleModel, error){
+	tempCouple, err := s.usersRepo.GetTempCoupleFromUser(ctx, userId)
+	if err != nil{
+		return nil, users.ErrorUnableToGetTempCouple
+	}else if tempCouple == nil{
+		return nil, nil
+	}
+	return tempCouple, nil
 }
