@@ -181,6 +181,19 @@ func (r *AuthPostgresRepo) GetSessionById(ctx context.Context, id uuid.UUID) (*a
 	return model, nil
 }
 
+func (r *AuthPostgresRepo)  UpdateSessionLastUsed(ctx context.Context, sessionId uuid.UUID, lastTime time.Time) (int, error){
+	result, err := r.db.ExecContext(
+		ctx,
+		`UPDATE sessions SET last_used = $1 WHERE id = $2`,
+		lastTime, sessionId,
+	)
+	if err != nil{
+		return 0,err 
+	}
+	num, _ := result.RowsAffected()
+	return int(num), nil
+}
+
 ///////////////////// HELPERS
 
 func (r *AuthPostgresRepo) readUser(row *sql.Row) (*auth.UserAuthModel, error){

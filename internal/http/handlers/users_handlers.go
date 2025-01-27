@@ -44,6 +44,29 @@ type patchNicknameDTO struct{
 	Nickname 	string 	`json:"nickname" validate:"required"`
 }
 
+/////////////////////////////////// ERRORS CODES
+
+var usersErrorCodes = map[error] int{
+	users.ErrorUnableCreateUser : http.StatusInternalServerError,
+	users.ErrorInvalidCountryCode : http.StatusBadRequest,
+	users.ErrorInvalidLanguageCode : http.StatusBadRequest,
+	users.ErrorInvalidGender : http.StatusBadRequest,
+	users.ErrorTooYoung : http.StatusBadGateway,
+	users.ErrorNoCoupleFound : http.StatusNotFound,
+	users.ErrorUserHasActiveCouple : http.StatusConflict,
+	users.ErrorDeletingUser : http.StatusInternalServerError,
+	users.ErrorCreatingTempCouple : http.StatusInternalServerError,
+	users.ErrorInvalidCode : http.StatusBadRequest,
+	users.ErrorCantConnectWithYourself : http.StatusBadRequest,
+	users.ErrorConnectingCouple : http.StatusInternalServerError,
+	users.ErrorCreatingPoints : http.StatusInternalServerError,
+	users.ErrorUpdatingNickname : http.StatusInternalServerError,
+	users.ErrorUnableToCheckPartnerNickname : http.StatusInternalServerError,
+	users.ErrorUnableToGetTempCouple : http.StatusInternalServerError,
+	users.ErrorNoTempCoupleFound : http.StatusInternalServerError,
+}
+
+
 ////// HANDLERS
 func (h *UsersHandler) PatchPartnersNickNameEndpoint(w http.ResponseWriter, r *http.Request){
 	userId := r.Context().Value(middlewares.UserIdKey).(uuid.UUID)
@@ -56,7 +79,11 @@ func (h *UsersHandler) PatchPartnersNickNameEndpoint(w http.ResponseWriter, r *h
 	}
 
 	if err := h.service.EditPartnersNickname(r.Context(), userId, coupleId, payload.Nickname); err != nil{
-		utils.WriteError(w, http.StatusInternalServerError, err)
+		errorCode, ok := usersErrorCodes[err]
+		if !ok{
+			errorCode = 500
+		}
+		utils.WriteError(w, errorCode, err)
 		return 
 	}
 

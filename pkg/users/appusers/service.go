@@ -250,7 +250,7 @@ func(s *UsersServiceImpl)  GetTempCoupleFromUser(ctx context.Context, userId uui
 	if err != nil{
 		return nil, users.ErrorUnableToGetTempCouple
 	}else if tempCouple == nil{
-		return nil, nil
+		return nil, users.ErrorNoTempCoupleFound
 	}
 	return tempCouple, nil
 }

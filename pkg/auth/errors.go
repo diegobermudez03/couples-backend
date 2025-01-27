@@ -27,4 +27,8 @@ var (
 	ErrorUserForAccountAlreadyExists = errors.New("ACCOUNT_ALREADY_HAS_USER")
 	ErrorUnableToConnectCouple = errors.New("UNABLE_TO_CONNECT_COUPLE")
 	ErrorGettingTempCouple = errors.New("UNABLE_TO_GET_CODE_COUPLE")
+	ErrTempCoupleNotFound = errors.New("TEMP_COUPLE_NOT_FOUND")
+	ErrCantCreateNewCouple = errors.New("CANT_CREATE_NEW_COUPLE")
+	ErrUnableToSuscribe = errors.New("UNABLE_TO_SUSCRIBE")
+	ErrNoCodeToSuscribe = errors.New("USER_HAS_NO_CODE_TO_SUSCRIBE")
 )

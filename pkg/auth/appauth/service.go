@@ -8,6 +8,7 @@ import (
 	"log"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/diegobermudez03/couples-backend/pkg/auth"
@@ -24,7 +25,8 @@ type AuthServiceImpl struct {
 	accessTokenLife 	int64
 	refreshTokenLife 	int64
 	jwtSecret 			string
-	codeSuscribers 		map[uuid.UUID] chan uuid.UUID
+	codeSuscribers 		map[uuid.UUID] chan string
+	suscribersMutex 	sync.RWMutex
 }
 
 
@@ -34,7 +36,8 @@ func NewAuthService(authRepo auth.AuthRepository, usersService users.UsersServic
 		usersService: usersService,
 		accessTokenLife: accessTokenLife,
 		refreshTokenLife : refreshTokenLife,
-		codeSuscribers: make(map[uuid.UUID] chan uuid.UUID),
+		codeSuscribers: make(map[uuid.UUID] chan string),
+		suscribersMutex : sync.RWMutex{},
 	}
 }
 
@@ -147,18 +150,19 @@ func (s *AuthServiceImpl) CloseUsersSession(ctx context.Context, token string) e
 	return nil
 }
 
-func (s *AuthServiceImpl) CreateTempCouple(ctx context.Context, token string, startDate int) (int, chan uuid.UUID, *uuid.UUID, error){
+func (s *AuthServiceImpl) CreateTempCouple(ctx context.Context, token string, startDate int) (int, error){
 	userId, err := s.getUserIdFromSession(ctx, token)
 	if err != nil{
-		return 0, nil, nil, auth.ErrorcreatingTempCouple  
+		return 0, auth.ErrorcreatingTempCouple  
 	}
 	if userId == nil{
-		return 0, nil, nil, auth.ErrorNoActiveUser
+		return 0, auth.ErrorNoActiveUser
 	}
-	channel := make(chan uuid.UUID)
-	s.codeSuscribers[*userId] = channel
 	code, err := s.usersService.CreateTempCouple(ctx, *userId, startDate)
-	return code, channel, userId,  err
+	if errors.Is(err, users.ErrorUserHasActiveCouple){
+		return 0, auth.ErrCantCreateNewCouple
+	}
+	return code, err
 }
 
 func (s *AuthServiceImpl) CreateUser(ctx context.Context, token, firstName, lastName, gender, countryCode, languageCode string,birthDate int,) (string, error){
@@ -228,9 +232,13 @@ func (s *AuthServiceImpl) ConnectCouple(ctx context.Context, token string, code 
 	if err != nil{
 		return "",  auth.ErrorUnableToConnectCouple  
 	}
+
+	s.suscribersMutex.RLock()
 	channel, ok := s.codeSuscribers[*partnerId]
+	s.suscribersMutex.RUnlock()
+	
 	if ok{
-		channel <- *authUser.UserId
+		channel <- auth.StatusVinculated
 	}
 	return s.createAccessToken(*authUser.UserId, *coupleId, session.Id)
 }
@@ -241,6 +249,11 @@ func (s *AuthServiceImpl) CreateAccessToken(ctx context.Context, token string)(s
 	if err != nil{
 		return "", auth.ErrorNonExistingSession 
 	}
+	//in a separated go routine we update the last time used of the session
+	go func(){
+		s.authRepo.UpdateSessionLastUsed(context.Background(), session.Id, time.Now())
+	}()
+
 	if session.ExpiresAt.Before(time.Now()){
 		s.authRepo.DeleteSessionById(ctx, session.Id)
 		return "", auth.ErrorExpiredRefreshToken
@@ -298,42 +311,70 @@ func (s *AuthServiceImpl) LogoutSession(ctx context.Context, sessionId uuid.UUID
 }
 
 
-func (s *AuthServiceImpl) GetTempCoupleOfUser(ctx context.Context, token string)(*auth.TempCoupleModel, chan uuid.UUID, *uuid.UUID, error){
+func (s *AuthServiceImpl) GetTempCoupleOfUser(ctx context.Context, token string)(*auth.TempCoupleModel, error){
 	userId, err := s.getUserIdFromSession(ctx, token)
 	if err != nil{
-		return nil, nil, nil, auth.ErrorGettingTempCouple
+		return nil, auth.ErrorGettingTempCouple
 	}
 	tempCouple, err:= s.usersService.GetTempCoupleFromUser(ctx, *userId)
-	if err != nil{
-		return nil, nil, nil, auth.ErrorGettingTempCouple
-	}else if tempCouple == nil{
-		return nil, nil, nil, nil
+	if errors.Is(err, users.ErrorNoTempCoupleFound){
+		return nil, auth.ErrTempCoupleNotFound
+	}else if err != nil{
+		return nil, auth.ErrorGettingTempCouple
 	}
 	tempCoupleAuth := new(auth.TempCoupleModel)
 	*tempCoupleAuth = auth.TempCoupleModel{
 		Code: tempCouple.Code,
 		StartDate: tempCouple.StartDate,
 	}
-	channel := make(chan uuid.UUID)
-	s.codeSuscribers[*userId] = channel
-	return tempCoupleAuth, channel,  userId, nil
-
+	return tempCoupleAuth, nil
 }
 
 func (s *AuthServiceImpl) RemoveCodeSuscriber(userId uuid.UUID){
+	s.suscribersMutex.Lock()
 	channel, ok := s.codeSuscribers[userId]
 	if ok{
 		delete(s.codeSuscribers, userId)
 		close(channel)
 	}
+	s.suscribersMutex.Unlock()
 }
+
+func (s *AuthServiceImpl) SuscribeTempCoupleNot(ctx context.Context, token string)(chan string, *uuid.UUID, error){
+	session, err := s.authRepo.GetSessionByToken(ctx, token)
+	if err != nil{
+		return nil, nil, auth.ErrUnableToSuscribe 
+	}else if session == nil{
+		return nil, nil, auth.ErrUnableToSuscribe
+	}
+	authUser, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
+	if err != nil || authUser == nil{
+		return nil, nil, auth.ErrUnableToSuscribe  
+	}
+	_, err = s.usersService.GetTempCoupleFromUser(ctx, *authUser.UserId)
+	if errors.Is(err, users.ErrorNoTempCoupleFound){
+		return nil, nil, auth.ErrNoCodeToSuscribe
+	}else if err != nil{
+		return nil, nil, auth.ErrUnableToSuscribe
+	}
+	s.suscribersMutex.Lock()
+	channel, ok := s.codeSuscribers[*authUser.UserId]
+	if ok{
+		close(channel)
+		delete(s.codeSuscribers, *authUser.UserId)
+	}
+	newChannel := make(chan string)
+	s.codeSuscribers[*authUser.UserId] = newChannel
+	s.suscribersMutex.Unlock()
+	return newChannel, authUser.UserId,nil
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
 //								private functions
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 func (s *AuthServiceImpl) createSession(ctx context.Context, authId uuid.UUID, device *string, os *string) (string, error){
 	var token string 
@@ -385,8 +426,8 @@ func (s *AuthServiceImpl) createAccessToken(userId uuid.UUID, coupleId uuid.UUID
 
 func (s *AuthServiceImpl) getUserIdFromSession(ctx context.Context, token string) (*uuid.UUID, error){
 	session, err := s.authRepo.GetSessionByToken(ctx, token)
-	if err != nil{
-		return nil, err 
+	if err != nil || session == nil{
+		return nil, auth.ErrorNonExistingSession 
 	}
 	user, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
 	if err != nil{

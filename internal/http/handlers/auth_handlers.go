@@ -1,11 +1,10 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/diegobermudez03/couples-backend/internal/http/middlewares"
 	"github.com/diegobermudez03/couples-backend/internal/utils"
@@ -37,6 +36,7 @@ func (h *AuthHandler) RegisterRoutes(r *chi.Mux){
 	router.Delete("/users/logout", h.userLogoutEndpoint)
 	router.Post("/couples/temporal", h.postTempCoupleCodeEndpoint)
 	router.Get("/couples/temporal", h.getTempCoupleCodeEndpoint)
+	router.Get("/couples/temporal/notification", h.suscribeTempCoupleNotifications)
 	router.Post("/couples/connect", h.connectWithCoupleEndpoint)
 	router.Get("/accessToken", h.getAccessTokenEndpoint)
 	router.With(h.middlewares.CheckAccessToken).Delete("/logout", h.logoutEndpoint)
@@ -73,7 +73,43 @@ type createUserDTO struct{
 	LanguageCode 	string 	`json:"languageCode" validate:"required"`
 }
 
+type tempCoupleDTO struct{
+	Code 		int 	`json:"code"`
+	StartDate 	int64 	`json:"startDate"`
+}
 
+/////////////////////////////////// ERRORS CODES
+
+var authErrorCodes = map[error] int{
+	auth.ErrorCreatingSession : http.StatusInternalServerError,
+	auth.ErrorCreatingAccessToken : http.StatusInternalServerError,
+	auth.ErrorCheckingStatus : http.StatusInternalServerError,
+	auth.ErrorcreatingTempCouple : http.StatusInternalServerError,
+	auth.ErrorNoUserFoundEmail : http.StatusNotFound,
+	auth.ErrorNoActiveUser : http.StatusNotFound,
+	auth.ErrorNoActiveCoupleFromUser : http.StatusNotFound,
+	auth.ErrorExpiredRefreshToken : http.StatusBadRequest,
+	auth.ErrorExpiredAccessToken : http.StatusBadRequest,
+	auth.ErrorMalformedAccessToken : http.StatusBadRequest,
+	auth.ErrorCantLogoutAnonymousAcc : http.StatusBadRequest,
+	auth.ErrorIncorrectPassword : http.StatusBadRequest,
+	auth.ErrorInsecurePassword : http.StatusBadRequest,
+	auth.ErrorEmailAlreadyUsed : http.StatusBadRequest,
+	auth.ErrorCreatingAccount : http.StatusInternalServerError,
+	auth.ErrorVinculatingAccount : http.StatusInternalServerError,
+	auth.ErrorCreatingUser : http.StatusInternalServerError,
+	auth.ErrorWithLogin : http.StatusInternalServerError,
+	auth.ErrorInvalidRefreshToken : http.StatusBadRequest,
+	auth.ErrorWithLogout : http.StatusInternalServerError,
+	auth.ErrorNonExistingSession : http.StatusNotFound,
+	auth.ErrorUserForAccountAlreadyExists : http.StatusConflict,
+	auth.ErrorUnableToConnectCouple : http.StatusInternalServerError,
+	auth.ErrorGettingTempCouple : http.StatusInternalServerError,
+	auth.ErrTempCoupleNotFound : http.StatusNotFound,
+	auth.ErrCantCreateNewCouple : http.StatusInternalServerError,
+	auth.ErrUnableToSuscribe : http.StatusInternalServerError,
+	auth.ErrNoCodeToSuscribe : http.StatusNotFound,
+}
 
 
 ///////////////////////////////// HANDLERS 
@@ -97,7 +133,11 @@ func (h *AuthHandler) registerEndpoint(w http.ResponseWriter, r *http.Request){
 		token,
 	)
 	if err != nil{
-		utils.WriteError(w, http.StatusInternalServerError, err)
+		errorCode, ok := authErrorCodes[err]
+		if !ok{
+			errorCode = 500
+		}
+		utils.WriteError(w, errorCode, err)
 		return  
 	}
 
@@ -121,7 +161,11 @@ func (h *AuthHandler) LoginEndpoint(w http.ResponseWriter, r *http.Request){
 
 	refreshToken, err := h.authService.LoginUserAuth(r.Context(), dto.Email, dto.Password, dto.Device, dto.Os)
 	if err != nil{
-		utils.WriteError(w, http.StatusInternalServerError, err)
+		errorCode, ok := authErrorCodes[err]
+		if !ok{
+			errorCode = 500
+		}
+		utils.WriteError(w, errorCode, err)
 		return 
 	}
 	utils.WriteJSON(
@@ -153,7 +197,11 @@ func (h *AuthHandler) createUserEndpoint(w http.ResponseWriter, r *http.Request)
 		payload.BirthDate,
 	)
 	if err != nil{
-		utils.WriteError(w, http.StatusInternalServerError, err)
+		errorCode, ok := authErrorCodes[err]
+		if !ok{
+			errorCode = 500
+		}
+		utils.WriteError(w, errorCode, err)
 		return 
 	}
 	utils.WriteJSON(w, http.StatusCreated, map[string]any{
@@ -170,7 +218,11 @@ func (h *AuthHandler) checkExistanceEndpoint(w http.ResponseWriter, r *http.Requ
 
 	status, err := h.authService.CheckUserAuthStatus(r.Context(), token)
 	if err != nil{
-		utils.WriteError(w, http.StatusInternalServerError, err)
+		errorCode, ok := authErrorCodes[err]
+		if !ok{
+			errorCode = 500
+		}
+		utils.WriteError(w, errorCode, err)
 		return 
 	}
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
@@ -186,7 +238,11 @@ func (h *AuthHandler) userLogoutEndpoint(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.authService.CloseUsersSession(r.Context(), token); err != nil{
-		utils.WriteError(w, http.StatusBadRequest, err)
+		errorCode, ok := authErrorCodes[err]
+		if !ok{
+			errorCode = 500
+		}
+		utils.WriteError(w, errorCode, err)
 		return 
 	}
 	utils.WriteJSON(w, http.StatusNoContent, nil)
@@ -198,32 +254,31 @@ func (h *AuthHandler) getTempCoupleCodeEndpoint(w http.ResponseWriter, r *http.R
 		utils.WriteError(w, http.StatusBadRequest, errors.New("no token provided"))
 		return 
 	}
-	tempCouple, channel, userId, err := h.authService.GetTempCoupleOfUser(r.Context(), token)
+	tempCouple, err := h.authService.GetTempCoupleOfUser(r.Context(), token)
 	if err != nil{
-		utils.WriteError(w, http.StatusInternalServerError, err)
+		errorCode, ok := authErrorCodes[err]
+		if !ok{
+			errorCode = 500
+		}
+		utils.WriteError(w, errorCode, err)
 		return 
 	}
-	if tempCouple == nil{
-		utils.WriteJSON(
-			w,
-			http.StatusOK,
-			nil,
-		)
+	dto := tempCoupleDTO{
+		Code: tempCouple.Code,
+		StartDate: tempCouple.StartDate.Unix(),
 	}
-	jsonTempCouple, _ := json.Marshal(tempCouple)
-
-	h.setSSECode(w, r, string(jsonTempCouple), channel, *userId)
+	utils.WriteJSON(
+		w, http.StatusOK, dto,
+	);
 }
 
 
 func (h *AuthHandler) postTempCoupleCodeEndpoint(w http.ResponseWriter, r *http.Request){
-	//if no token we dont open sse
 	token := r.Header.Get("token")
 	if token == ""{
 		utils.WriteError(w, http.StatusBadRequest, errors.New("no token provided"))
 		return 
 	}
-	//IF NO PAYLOAD WE DONT OPEN SSE
 	payload := struct{
 		StartDate	int `json:"startDate" validate:"required"`
 	}{}
@@ -232,14 +287,21 @@ func (h *AuthHandler) postTempCoupleCodeEndpoint(w http.ResponseWriter, r *http.
 		return 
 	}
 
-	///WE CREATE THE COUPLE
-	code, channel, userId, err := h.authService.CreateTempCouple(r.Context(), token, payload.StartDate)
+	code, err := h.authService.CreateTempCouple(r.Context(), token, payload.StartDate)
 	if err != nil{
-		utils.WriteError(w, http.StatusInternalServerError, err)
+		errorCode, ok := authErrorCodes[err]
+		if !ok{
+			errorCode = 500
+		}
+		utils.WriteError(w, errorCode, err)
 		return 
 	}
-
-	h.setSSECode(w, r, strconv.Itoa(code), channel, *userId)
+	utils.WriteJSON(
+		w, http.StatusCreated,
+		map[string]int{
+			"code" : code,
+		},
+	)
 }
 
 
@@ -260,7 +322,11 @@ func (h *AuthHandler) connectWithCoupleEndpoint(w http.ResponseWriter, r *http.R
 
 	accessToken, err := h.authService.ConnectCouple(r.Context(), token, payload.Code)
 	if err != nil{
-		utils.WriteError(w, http.StatusInternalServerError, err)
+		errorCode, ok := authErrorCodes[err]
+		if !ok{
+			errorCode = 500
+		}
+		utils.WriteError(w, errorCode, err)
 		return 
 	}
 	utils.WriteJSON(w, http.StatusCreated, map[string]string{"accessToken" : accessToken})
@@ -277,7 +343,11 @@ func (h *AuthHandler) getAccessTokenEndpoint(w http.ResponseWriter, r *http.Requ
 
 	accessToken, err := h.authService.CreateAccessToken(r.Context(), payload.RefreshToken)
 	if err != nil{
-		utils.WriteError(w, http.StatusInternalServerError, err)
+		errorCode, ok := authErrorCodes[err]
+		if !ok{
+			errorCode = 500
+		}
+		utils.WriteError(w, errorCode, err)
 		return 
 	}
 	utils.WriteJSON(w, http.StatusCreated, map[string]string{"accessToken" : accessToken})
@@ -287,18 +357,31 @@ func (h *AuthHandler) getAccessTokenEndpoint(w http.ResponseWriter, r *http.Requ
 func (h *AuthHandler) logoutEndpoint(w http.ResponseWriter, r *http.Request){
 	sessionId := r.Context().Value(middlewares.SessionIdKey).(uuid.UUID)
 	if err := h.authService.LogoutSession(r.Context(), sessionId); err != nil{
-		utils.WriteError(w, http.StatusInternalServerError, err)
+		errorCode, ok := authErrorCodes[err]
+		if !ok{
+			errorCode = 500
+		}
+		utils.WriteError(w, errorCode, err)
 		return 
 	}
 	utils.WriteJSON(w, http.StatusNoContent, nil)
 }
 
-////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////
-/////////////////////// PRIVATE FUNCTIONS
-
-func (h *AuthHandler) setSSECode(w http.ResponseWriter, r *http.Request, payload string, channel chan uuid.UUID, userId uuid.UUID){
+func (h *AuthHandler) suscribeTempCoupleNotifications(w http.ResponseWriter, r *http.Request){
+	token := r.Header.Get("token")
+	if token == ""{
+		utils.WriteError(w, http.StatusBadRequest, errors.New("no token provided"))
+		return 
+	}
+	channel, userId, err := h.authService.SuscribeTempCoupleNot(r.Context(), token)
+	if err != nil{
+		errorCode, ok := authErrorCodes[err]
+		if !ok{
+			errorCode = 500
+		}
+		utils.WriteError(w, errorCode, err)
+		return
+	}
 	// SETTING SSE
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -309,18 +392,28 @@ func (h *AuthHandler) setSSECode(w http.ResponseWriter, r *http.Request, payload
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
 	}
 
-	w.Write([]byte(fmt.Sprintf("data: %s\n\n", payload)))
+	w.Write([]byte("data: CONNECTED\n\n"))
 	flusher.Flush()
 	
 	clientGone := r.Context().Done()
 	select{
 	case <- clientGone:
-		fmt.Println("Client closed connection")
-		h.authService.RemoveCodeSuscriber(userId)
-	case <- channel:
-		w.Write([]byte("data: VINCULATED\n\n"))
+		log.Print("CLIENT CLOSED SSE CONNECTION")
+		h.authService.RemoveCodeSuscriber(*userId)
+	case received :=<- channel:
+		if received == auth.StatusVinculated{
+			w.Write([]byte(fmt.Sprintf("data: %s\n\n", received)))
+		}else{
+			w.Write([]byte("data: ERROR\n\n"))
+		}
 		flusher.Flush()
 		w.Write([]byte("event:close\ndata: Connection closing\n\n"))
 		flusher.Flush()
+		log.Print("CLOSING SSE CONNECTION BY SERVER")
+		//here it closes the connection but is not because of the message but because the handler function ends
 	}
 }
+////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+/////////////////////// PRIVATE FUNCTIONS
