@@ -9,6 +9,7 @@ var (
 	ErrorInvalidGender = errors.New("INVALID_GENDER")
 	ErrorTooYoung = errors.New("TOO_YOUNG")
 	ErrorNoCoupleFound = errors.New("NO_COUPLE_FOUND")
+	ErrorCantGetCouple = errors.New("UNABLE_TO_GET_COUPLE")
 	ErrorUserHasActiveCouple = errors.New("USER_HAS_ACTIVE_COUPLE")
 	ErrorDeletingUser = errors.New("UNABLE_TO_DELETE_USER")
 	ErrorCreatingTempCouple = errors.New("UNABLE_TO_CREATE_CODE")

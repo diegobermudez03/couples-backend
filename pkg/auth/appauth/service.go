@@ -171,7 +171,19 @@ func (s *AuthServiceImpl) CreateUser(ctx context.Context, token, firstName, last
 	if session != nil{
 		userAuth, _ := s.authRepo.GetUserById(ctx, session.UserAuthId)
 		if userAuth != nil && userAuth.UserId != nil{
-			return "", auth.ErrorUserForAccountAlreadyExists
+			if s.checkIfAnonymousAuth(userAuth) {
+				_, err := s.usersService.GetCoupleFromUser(ctx, *userAuth.UserId)
+				if errors.Is(err, users.ErrorNoCoupleFound){
+					//at this point, if there was an anoynmous account, and it had no couple, then we delete it
+					go func (){ 
+						s.usersService.DeleteUserById(ctx, *userAuth.UserId) 
+						s.authRepo.DeleteSessionById(ctx, session.Id)
+						s.usersService.DeleteUserById(ctx, userAuth.Id)
+					}()
+				}else{
+					return "", auth.ErrorUserForAccountAlreadyExists
+				}
+			}
 		}
 	}
 
@@ -210,7 +222,7 @@ func (s *AuthServiceImpl) CheckUserAuthStatus(ctx context.Context, token string)
 		return auth.StatusUserCreated, nil 
 	}
 	partnerHasNickname, err := s.usersService.CheckPartnerNickname(ctx, *userId)
-	if err != nil && !partnerHasNickname{
+	if err == nil && !partnerHasNickname{
 		return auth.StatusPartnerWithoutNickname, nil
 	}
 	return auth.StatusCoupleCreated, nil
@@ -229,7 +241,13 @@ func (s *AuthServiceImpl) ConnectCouple(ctx context.Context, token string, code 
 		return "", auth.ErrorUnableToConnectCouple  
 	}
 	coupleId, partnerId, err := s.usersService.ConnectCouple(ctx, *authUser.UserId, code)
-	if err != nil{
+	if errors.Is(err, users.ErrorCantConnectWithYourself){
+		return "", auth.ErrCantConnectWithYourself
+	}else if errors.Is(err, users.ErrorUserHasActiveCouple){
+		return "", auth.ErrCantCreateNewCouple
+	}else if errors.Is(err, users.ErrorInvalidCode){
+		return "", auth.ErrNonExistingCode
+	}else if err != nil{
 		return "",  auth.ErrorUnableToConnectCouple  
 	}
 
@@ -244,35 +262,41 @@ func (s *AuthServiceImpl) ConnectCouple(ctx context.Context, token string, code 
 }
 
 
-func (s *AuthServiceImpl) CreateAccessToken(ctx context.Context, token string)(string, error){
+func (s *AuthServiceImpl) CreateAccessToken(ctx context.Context, token string)(string, *string, error){
 	session, err := s.authRepo.GetSessionByToken(ctx, token)
 	if err != nil{
-		return "", auth.ErrorNonExistingSession 
+		return "", nil, auth.ErrorNonExistingSession 
 	}
-	//in a separated go routine we update the last time used of the session
-	go func(){
-		s.authRepo.UpdateSessionLastUsed(context.Background(), session.Id, time.Now())
-	}()
-
-	if session.ExpiresAt.Before(time.Now()){
-		s.authRepo.DeleteSessionById(ctx, session.Id)
-		return "", auth.ErrorExpiredRefreshToken
+	var newRefreshToken *string = nil
+	//if expired, we create a new one
+	if(session.ExpiresAt.Before(time.Now())){
+		rToken, err := s.createSession(ctx, session.UserAuthId, session.Device, session.Os)
+		if err != nil{
+			go func(){s.authRepo.DeleteSessionById(ctx, session.Id)}()
+			newRefreshToken = &rToken
+		}
+	}else{
+		//in a separated go routine we update the last time used of the session
+		go func(){
+			s.authRepo.UpdateSessionLastUsed(context.Background(), session.Id, time.Now())
+		}()
 	}
 	user, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
 	if err != nil{
-		return "", auth.ErrorCreatingAccessToken 
+		return "", nil, auth.ErrorCreatingAccessToken 
 	}
 	if user.UserId == nil{
-		return "", auth.ErrorNoActiveUser
+		return "", nil, auth.ErrorNoActiveUser
 	}
 	couple, err := s.usersService.GetCoupleFromUser(ctx, *user.UserId)
 	if err != nil{
-		return "", auth.ErrorCreatingAccessToken 
+		return "", nil, auth.ErrorCreatingAccessToken 
 	}
 	if couple == nil {
-		return "", auth.ErrorNoActiveCoupleFromUser
+		return "", nil, auth.ErrorNoActiveCoupleFromUser
 	}
-	return s.createAccessToken(*user.UserId, couple.Id, session.Id)
+	accessToken, err := s.createAccessToken(*user.UserId, couple.Id, session.Id)
+	return accessToken, newRefreshToken, err
 }
 
 func (s *AuthServiceImpl) ValidateAccessToken(ctx context.Context, accessTokenString string) (*auth.AccessClaims, error){
@@ -357,12 +381,8 @@ func (s *AuthServiceImpl) SuscribeTempCoupleNot(ctx context.Context, token strin
 	}else if err != nil{
 		return nil, nil, auth.ErrUnableToSuscribe
 	}
+	s.RemoveCodeSuscriber(*authUser.UserId)
 	s.suscribersMutex.Lock()
-	channel, ok := s.codeSuscribers[*authUser.UserId]
-	if ok{
-		close(channel)
-		delete(s.codeSuscribers, *authUser.UserId)
-	}
 	newChannel := make(chan string)
 	s.codeSuscribers[*authUser.UserId] = newChannel
 	s.suscribersMutex.Unlock()
@@ -390,15 +410,20 @@ func (s *AuthServiceImpl) createSession(ctx context.Context, authId uuid.UUID, d
 			break
 		}
 	}
-	
+	//expires in 1 month
+	session := auth.SessionModel{
+		Id: uuid.New(),
+		Token: token,
+		Device: device,
+		Os: os,
+		ExpiresAt: time.Now().AddDate(0,0,30),
+		CreatedAt: time.Now(),
+		LastUsed: time.Now(),
+		UserAuthId: authId,
+	}
 	num, err := s.authRepo.CreateSession(
 		ctx, 
-		uuid.New(),
-		authId,
-		token, 
-		device, 
-		os,
-		time.Now().Add(time.Duration(s.refreshTokenLife) * time.Hour),
+		&session,
 	)
 	if err != nil || num == 0{
 		return "", auth.ErrorCreatingSession 

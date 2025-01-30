@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand/v2"
 	"net/http"
 
 	"github.com/diegobermudez03/couples-backend/internal/http/middlewares"
@@ -38,7 +39,7 @@ func (h *AuthHandler) RegisterRoutes(r *chi.Mux){
 	router.Get("/couples/temporal", h.getTempCoupleCodeEndpoint)
 	router.Get("/couples/temporal/notification", h.suscribeTempCoupleNotifications)
 	router.Post("/couples/connect", h.connectWithCoupleEndpoint)
-	router.Get("/accessToken", h.getAccessTokenEndpoint)
+	router.Post("/accessToken", h.postAccessTokenEndpoint)
 	router.With(h.middlewares.CheckAccessToken).Delete("/logout", h.logoutEndpoint)
 
 }
@@ -109,6 +110,8 @@ var authErrorCodes = map[error] int{
 	auth.ErrCantCreateNewCouple : http.StatusInternalServerError,
 	auth.ErrUnableToSuscribe : http.StatusInternalServerError,
 	auth.ErrNoCodeToSuscribe : http.StatusNotFound,
+	auth.ErrNonExistingCode : http.StatusBadRequest,
+	auth.ErrCantConnectWithYourself : http.StatusBadRequest,
 }
 
 
@@ -332,7 +335,7 @@ func (h *AuthHandler) connectWithCoupleEndpoint(w http.ResponseWriter, r *http.R
 	utils.WriteJSON(w, http.StatusCreated, map[string]string{"accessToken" : accessToken})
 }
 
-func (h *AuthHandler) getAccessTokenEndpoint(w http.ResponseWriter, r *http.Request){
+func (h *AuthHandler) postAccessTokenEndpoint(w http.ResponseWriter, r *http.Request){
 	payload := struct{
 		RefreshToken 	string 	`json:"refreshToken" validate:"required"`
 	}{}
@@ -341,7 +344,7 @@ func (h *AuthHandler) getAccessTokenEndpoint(w http.ResponseWriter, r *http.Requ
 		return 
 	}
 
-	accessToken, err := h.authService.CreateAccessToken(r.Context(), payload.RefreshToken)
+	accessToken, newRToken, err := h.authService.CreateAccessToken(r.Context(), payload.RefreshToken)
 	if err != nil{
 		errorCode, ok := authErrorCodes[err]
 		if !ok{
@@ -350,7 +353,14 @@ func (h *AuthHandler) getAccessTokenEndpoint(w http.ResponseWriter, r *http.Requ
 		utils.WriteError(w, errorCode, err)
 		return 
 	}
-	utils.WriteJSON(w, http.StatusCreated, map[string]string{"accessToken" : accessToken})
+	utils.WriteJSON(
+		w, 
+		http.StatusCreated,
+		 map[string]any{
+			"accessToken" : accessToken,
+			"refreshToken" : newRToken,
+		},
+	)
 }
 
 
@@ -390,17 +400,19 @@ func (h *AuthHandler) suscribeTempCoupleNotifications(w http.ResponseWriter, r *
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
+		return
 	}
-
+	randId := rand.IntN(10000)+1000
+	log.Printf("CONNECTED CLIENT %d", randId)
 	w.Write([]byte("data: CONNECTED\n\n"))
 	flusher.Flush()
 	
 	clientGone := r.Context().Done()
 	select{
 	case <- clientGone:
-		log.Print("CLIENT CLOSED SSE CONNECTION")
+		log.Printf("CLIENT CLOSED SSE CONNECTION ID : %d", randId)
 		h.authService.RemoveCodeSuscriber(*userId)
-	case received :=<- channel:
+	case received, ok :=<- channel:
 		if received == auth.StatusVinculated{
 			w.Write([]byte(fmt.Sprintf("data: %s\n\n", received)))
 		}else{
@@ -409,7 +421,11 @@ func (h *AuthHandler) suscribeTempCoupleNotifications(w http.ResponseWriter, r *
 		flusher.Flush()
 		w.Write([]byte("event:close\ndata: Connection closing\n\n"))
 		flusher.Flush()
-		log.Print("CLOSING SSE CONNECTION BY SERVER")
+		if ok{
+			//we only close remove the suscriber from here if the channel is still opened, if its not it means that someone else closed it
+			h.authService.RemoveCodeSuscriber(*userId)
+		}
+		log.Printf("CLOSING SSE CONNECTION BY SERVER ID: %d", randId)
 		//here it closes the connection but is not because of the message but because the handler function ends
 	}
 }

@@ -23,7 +23,7 @@ type AuthService interface {
 	CreateUser(ctx context.Context, token, firstName, lastName, gender, countryCode, languageCode string,birthDate int,) (refrshToken string, err error)
 	ConnectCouple(ctx context.Context, token string, code int) (accessToken string, err error)
 	CheckUserAuthStatus(ctx context.Context, token string) (string, error)
-	CreateAccessToken(ctx context.Context, token string)(string, error)
+	CreateAccessToken(ctx context.Context, token string)(string, *string, error)
 	ValidateAccessToken(ctx context.Context, accessTokenString string) (*AccessClaims, error)
 	GetTempCoupleOfUser(ctx context.Context, token string)(*TempCoupleModel, error)
 	LogoutSession(ctx context.Context, sessionId uuid.UUID) error
@@ -34,7 +34,7 @@ type AuthService interface {
 type AuthRepository interface {
 	CreateUserAuth(ctx context.Context, id uuid.UUID, email string, hash string) (int, error)
 	CreateEmptyUser(ctx context.Context, id uuid.UUID, userId uuid.UUID) (int, error)
-	CreateSession(ctx context.Context, id uuid.UUID, userId uuid.UUID, token string, device *string, os *string, expiresAt time.Time) (int, error)
+	CreateSession(ctx context.Context, sessionModel *SessionModel) (int, error)
 	GetUserByEmail(ctx context.Context, email string) (*UserAuthModel, error)
 	GetUserById(ctx context.Context, id uuid.UUID) (*UserAuthModel, error)
 	GetSessionByToken(ctx context.Context, token string) (*SessionModel, error)

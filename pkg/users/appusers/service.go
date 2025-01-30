@@ -137,7 +137,14 @@ func (s *UsersServiceImpl) CreateTempCouple(ctx context.Context, userId uuid.UUI
 }
 
 func (s *UsersServiceImpl) GetCoupleFromUser(ctx context.Context, userId uuid.UUID) (*users.CoupleModel, error){
-	return s.usersRepo.GetCoupleByUserId(ctx, userId)
+	couple, err := s.usersRepo.GetCoupleByUserId(ctx, userId)
+	if err != nil{
+		return nil, users.ErrorCantGetCouple
+	}
+	if couple == nil{
+		return nil, users.ErrorNoCoupleFound
+	}
+	return couple, nil
 }
 
 
@@ -241,7 +248,7 @@ func (s *UsersServiceImpl)  CheckPartnerNickname(ctx context.Context, userId uui
 	if err != nil{
 		return false, users.ErrorUnableToCheckPartnerNickname
 	}
-	return partner.NickName != "", nil
+	return partner.NickName != partner.FirstName, nil
 }
 
 

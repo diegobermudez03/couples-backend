@@ -31,4 +31,6 @@ var (
 	ErrCantCreateNewCouple = errors.New("CANT_CREATE_NEW_COUPLE")
 	ErrUnableToSuscribe = errors.New("UNABLE_TO_SUSCRIBE")
 	ErrNoCodeToSuscribe = errors.New("USER_HAS_NO_CODE_TO_SUSCRIBE")
+	ErrNonExistingCode = errors.New("NON_EXISTING_VINCULATION_CODE")
+	ErrCantConnectWithYourself = errors.New("CANT_CONNECT_WITH_YOURSELF") 
 )

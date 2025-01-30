@@ -64,6 +64,7 @@ var usersErrorCodes = map[error] int{
 	users.ErrorUnableToCheckPartnerNickname : http.StatusInternalServerError,
 	users.ErrorUnableToGetTempCouple : http.StatusInternalServerError,
 	users.ErrorNoTempCoupleFound : http.StatusInternalServerError,
+	users.ErrorCantGetCouple: http.StatusInternalServerError,
 }
 
 

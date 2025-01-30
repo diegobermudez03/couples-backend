@@ -36,12 +36,13 @@ func (r *AuthPostgresRepo) CreateUserAuth(ctx context.Context, id uuid.UUID, ema
 	return int(num), nil
 }
 
-func (r *AuthPostgresRepo) CreateSession(ctx context.Context,  id uuid.UUID, userId uuid.UUID, token string, device *string, os *string, expiresAt time.Time) (int, error){
+func (r *AuthPostgresRepo) CreateSession(ctx context.Context,  sessionModel *auth.SessionModel) (int, error){
 	result, err := r.db.ExecContext(
 		ctx,
 		`INSERT INTO sessions(id, token, device, os, expires_at, created_at, last_used, user_auth_id)
 		VALUES($1, $2, $3, $4, $5, $6, $7, $8)`,
-		id, token, device, os, expiresAt, time.Now(), time.Now(), userId,
+		sessionModel.Id, sessionModel.Token, sessionModel.Device, sessionModel.Os, sessionModel.ExpiresAt, 
+		sessionModel.CreatedAt, sessionModel.LastUsed, sessionModel.UserAuthId,
 	)
 	if err != nil{
 		log.Print("error creating session: ", err.Error())
