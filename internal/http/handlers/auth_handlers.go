@@ -16,13 +16,15 @@ import (
 
 type AuthHandler struct {
 	authService 	auth.AuthService
+	adminService 	auth.AuthAdminService
 	middlewares 	*middlewares.Middlewares
 }
 
-func NewAuthHandler(authService auth.AuthService, middlewares *middlewares.Middlewares) *AuthHandler {
+func NewAuthHandler(authService auth.AuthService, adminService 	auth.AuthAdminService, middlewares *middlewares.Middlewares) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
 		middlewares: middlewares,
+		adminService :adminService,
 	}
 }
 
@@ -42,6 +44,8 @@ func (h *AuthHandler) RegisterRoutes(r *chi.Mux){
 	router.Post("/accessToken", h.postAccessTokenEndpoint)
 	router.With(h.middlewares.CheckAccessToken).Delete("/logout", h.logoutEndpoint)
 
+
+	router.Post("/admin/accessToken", h.postAdminAccessTokenEndpoint)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -359,6 +363,34 @@ func (h *AuthHandler) postAccessTokenEndpoint(w http.ResponseWriter, r *http.Req
 		 map[string]any{
 			"accessToken" : accessToken,
 			"refreshToken" : newRToken,
+		},
+	)
+}
+
+
+func (h *AuthHandler) postAdminAccessTokenEndpoint(w http.ResponseWriter, r *http.Request){
+	payload := struct{
+		RefreshToken 	string 	`json:"refreshToken" validate:"required"`
+	}{}
+	if err := utils.ReadJSON(r, &payload); err != nil{
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return 
+	}
+
+	accessToken, err := h.adminService.CreateAccessToken(r.Context(), payload.RefreshToken)
+	if err != nil{
+		errorCode, ok := authErrorCodes[err]
+		if !ok{
+			errorCode = 500
+		}
+		utils.WriteError(w, errorCode, err)
+		return 
+	}
+	utils.WriteJSON(
+		w, 
+		http.StatusCreated,
+		 map[string]any{
+			"accessToken" : accessToken,
 		},
 	)
 }

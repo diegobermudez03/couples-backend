@@ -18,3 +18,9 @@ CREATE TABLE IF NOT EXISTS sessions(
     last_used           TIMESTAMP NOT NULL,
     user_auth_id        UUID REFERENCES users_auth(id) NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS admin_sessions(
+    id          UUID PRIMARY KEY,
+    token       TEXT NOT NULL,
+    created_at  TIMESTAMP NOT NULL
+);

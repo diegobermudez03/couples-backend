@@ -32,8 +32,7 @@ CREATE TABLE IF NOT EXISTS points(
     id              UUID PRIMARY KEY,
     points          INTEGER NOT NULL,
     day             DATE NOT NULL,
-    user_id         UUID REFERENCES users(id),
-    couple_id       UUID REFERENCES couples(id)
+    user_id         UUID REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS couple_levels(

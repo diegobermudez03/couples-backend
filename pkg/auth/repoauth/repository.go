@@ -195,6 +195,26 @@ func (r *AuthPostgresRepo)  UpdateSessionLastUsed(ctx context.Context, sessionId
 	return int(num), nil
 }
 
+
+func (r *AuthPostgresRepo)  GetAdminSessionByToken(ctx context.Context, token string)(*auth.AdminSessionModel, error){
+	row := r.db.QueryRowContext(
+		ctx,
+		`SELECT id, token, created_at
+		FROM admin_sessions WHERE token = $1`,
+		token,
+	)
+	model := new(auth.AdminSessionModel)
+
+	err := row.Scan(&model.Id, &model.Token, &model.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows){
+		return nil, nil
+	}else if err != nil{
+		log.Print("error getting session : ", err.Error())
+		return nil, err
+	}
+	return model, nil
+}
+
 ///////////////////// HELPERS
 
 func (r *AuthPostgresRepo) readUser(row *sql.Row) (*auth.UserAuthModel, error){

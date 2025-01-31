@@ -40,6 +40,5 @@ type PointsModel struct{
 	Id 			uuid.UUID
 	Day 		time.Time
 	Points 		int 
-	CoupleId 	*uuid.UUID
 	UserId 		*uuid.UUID
 }

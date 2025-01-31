@@ -195,22 +195,30 @@ func (s *UsersServiceImpl) ConnectCouple(ctx context.Context, userId uuid.UUID, 
 	}
 
 	//delete temp couples
-	s.usersRepo.DeleteTempCoupleById(ctx, heId)
-	s.usersRepo.DeleteTempCoupleById(ctx, sheId)
+	go func(){
+		s.usersRepo.DeleteTempCoupleById(ctx, heId)
+		s.usersRepo.DeleteTempCoupleById(ctx, sheId)
 
-	//create first points
-	num, err := s.usersRepo.CreateCouplePoints(
-		ctx,
-		&users.PointsModel{
-			Id: uuid.New(),
-			Day: time.Now(),
-			Points: users.CouplePointsForConnecting,
-			CoupleId: &coupleId,
-		},
-	)
-	if err != nil || num == 0{
-		return nil, nil, users.ErrorCreatingPoints
-	}
+		//create first points
+		s.usersRepo.CreateCouplePoints(
+			ctx,
+			&users.PointsModel{
+				Id: uuid.New(),
+				Day: time.Now(),
+				Points: users.CouplePointsForConnecting,
+				UserId: &heId,
+			},
+		)
+		s.usersRepo.CreateCouplePoints(
+			ctx,
+			&users.PointsModel{
+				Id: uuid.New(),
+				Day: time.Now(),
+				Points: users.CouplePointsForConnecting,
+				UserId: &sheId,
+			},
+		)
+	}()
 	return &coupleId, &tempCouple.UserId, nil
 }
 

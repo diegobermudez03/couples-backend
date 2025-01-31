@@ -15,6 +15,12 @@ type AccessClaims struct{
 	jwt.RegisteredClaims
 }
 
+type AdminAccessClaims struct{
+	SessionId 	uuid.UUID
+	jwt.RegisteredClaims
+}
+
+
 type AuthService interface {
 	RegisterUserAuth(ctx context.Context, email, password, device, os, token string) (refreshToken string, err error)
 	LoginUserAuth(ctx context.Context, email string, password string, device string, os string) (refreshToken string, err error)
@@ -31,6 +37,11 @@ type AuthService interface {
 	RemoveCodeSuscriber(userId uuid.UUID)
 }
 
+type AuthAdminService interface{
+	ValidateAccessToken(ctx context.Context, accessTokenString string) (*AdminAccessClaims, error)
+	CreateAccessToken(ctx context.Context, token string)(string, error)
+}
+
 type AuthRepository interface {
 	CreateUserAuth(ctx context.Context, id uuid.UUID, email string, hash string) (int, error)
 	CreateEmptyUser(ctx context.Context, id uuid.UUID, userId uuid.UUID) (int, error)
@@ -44,6 +55,7 @@ type AuthRepository interface {
 	DeleteUserAuthById(ctx context.Context, authId uuid.UUID) (int, error)
 	UpdateAuthUserById(ctx context.Context, authId uuid.UUID, authModel *UserAuthModel) (int, error)
 	UpdateSessionLastUsed(ctx context.Context, sessionId uuid.UUID, lastTime time.Time) (int, error)
+	GetAdminSessionByToken(ctx context.Context, token string)(*AdminSessionModel, error)
 }
 
 

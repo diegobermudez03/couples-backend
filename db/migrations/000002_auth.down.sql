@@ -1,2 +1,3 @@
 DROP TABLE IF EXISTS users_auth;
 DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS admin_sessions;

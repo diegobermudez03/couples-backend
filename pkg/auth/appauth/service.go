@@ -30,12 +30,13 @@ type AuthServiceImpl struct {
 }
 
 
-func NewAuthService(authRepo auth.AuthRepository, usersService users.UsersService, accessTokenLife int64, refreshTokenLife int64) auth.AuthService{
+func NewAuthService(authRepo auth.AuthRepository, usersService users.UsersService, accessTokenLife int64, refreshTokenLife int64, jwtSecret string) auth.AuthService{
 	return &AuthServiceImpl{
 		authRepo: authRepo,
 		usersService: usersService,
 		accessTokenLife: accessTokenLife,
 		refreshTokenLife : refreshTokenLife,
+		jwtSecret: jwtSecret,
 		codeSuscribers: make(map[uuid.UUID] chan string),
 		suscribersMutex : sync.RWMutex{},
 	}

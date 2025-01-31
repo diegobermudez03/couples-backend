@@ -164,9 +164,9 @@ func (r *UsersPostgresRepo) CreateCouple(ctx context.Context, couple *users.Coup
 func (r *UsersPostgresRepo) CreateCouplePoints(ctx context.Context, points *users.PointsModel) (int, error) {
 	result, err := r.db.ExecContext(
 		ctx, 
-		`INSERT INTO points(id, points, day, couple_id)
-		VALUES($1, $2, $3, $4)`,
-		points.Id, points.Points, points.Day, *points.CoupleId,
+		`INSERT INTO points(id, points, day)
+		VALUES($1, $2, $3)`,
+		points.Id, points.Points, points.Day,
 	)
 	if err != nil{
 		log.Print("error creating points: ", err.Error())
