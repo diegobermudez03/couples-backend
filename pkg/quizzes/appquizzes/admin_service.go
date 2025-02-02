@@ -2,6 +2,7 @@ package appquizzes
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log"
 	"strings"
@@ -35,9 +36,12 @@ func (s *AdminServiceImpl) CreateQuizCategory(ctx context.Context, name, descrip
 	if err == nil && cat != nil{
 		return quizzes.ErrCategoryAlreadyExists
 	}
-	imageId, err := s.filesService.UploadImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, quizzes.DOMAIN_NAME,quizzes.CATEGORIES, name)
 
+	imageId, err := s.filesService.UploadImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, quizzes.DOMAIN_NAME,quizzes.CATEGORIES, name)
 	if err != nil{
+		if errors.Is(err, files.ErrInvalidImageType){
+			return quizzes.ErrInvalidImageType
+		}
 		log.Print(err.Error())
 		return quizzes.ErrCreatingCategory
 	}	
@@ -46,11 +50,11 @@ func (s *AdminServiceImpl) CreateQuizCategory(ctx context.Context, name, descrip
 		Id: uuid.New(),
 		Name: name,
 		Description: description,
-		FileId : imageId,
+		ImageId : imageId,
 		CreatedAt: time.Now(),
 	}
 	if num, err :=s.quizzesRepo.CreateCategory(ctx, &quizModel); err != nil || num == 0{
-		log.Print(err.Error())
+		log.Print(err)
 		return quizzes.ErrCreatingCategory
 	}
 	return nil

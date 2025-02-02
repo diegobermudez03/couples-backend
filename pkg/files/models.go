@@ -6,9 +6,10 @@ import (
 	"github.com/google/uuid"
 )
 
-type File struct {
+type FileModel struct {
 	Id        uuid.UUID
 	Bucket    string
+	Group 	  string
 	ObjectKey string
 	Type      string
 	CreatedAt time.Time

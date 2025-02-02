@@ -3,7 +3,6 @@ package utils
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
@@ -12,8 +11,8 @@ import (
 var validate = validator.New(validator.WithRequiredStructEnabled())
 
 var (
-	errorNoBody = errors.New("no body provided")
-	errorInvalidBody = errors.New("invalid body")
+	errorNoBody = errors.New("NO_BODY_PROVIDED")
+	errorInvalidBody = errors.New("INVALID_BODY")
 )
 
 func WriteJSON(w http.ResponseWriter, status int, body any) error {
@@ -39,7 +38,21 @@ func ReadJSON(r *http.Request, payload any) error{
 		return errorNoBody
 	}
 	if err := json.NewDecoder(r.Body).Decode(payload); err != nil{
-		log.Println(err.Error())
+		return errorInvalidBody
+	}
+	if err := validate.Struct(payload); err != nil{
+		return errorInvalidBody
+	}
+	return nil
+}
+
+
+func ReadFormJson(r *http.Request, fieldName string, payload any) error{
+	text := r.FormValue(fieldName)
+	if text == ""{
+		return errorNoBody
+	}
+	if err := json.Unmarshal([]byte(text), &payload); err != nil{
 		return errorInvalidBody
 	}
 	if err := validate.Struct(payload); err != nil{

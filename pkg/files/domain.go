@@ -2,7 +2,6 @@ package files
 
 import (
 	"context"
-	"image"
 	"io"
 
 	"github.com/google/uuid"
@@ -12,9 +11,12 @@ type Service interface {
 	UploadImage(ctx context.Context, image io.Reader, maxSize int64, path ...string) (*uuid.UUID,error)
 }
 
+type Repository interface{
+	CreateFile(ctx context.Context, file *FileModel) (int,error)
+}
 
 type FileRepository interface{
-	StoreFile(ctx  context.Context, bucket, group, objectKey string, image image.Image) error
+	StoreFile(ctx  context.Context, bucket, group, objectKey string, image io.Reader) error
 }
 
 

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -52,13 +51,16 @@ type PostCategoryDTO struct{
 /////////////////////////////////// ERRORS CODES
 
 var quizzessErrorCodes = map[error] int{
+	quizzes.ErrCategoryAlreadyExists : http.StatusConflict,
+	quizzes.ErrMissingCategoryAttributes : http.StatusBadRequest,
+	quizzes.ErrCreatingCategory : http.StatusInternalServerError,
 }
 
 
 ///////////////////////////////// HANDLERS 
 
 func (h *QuizzesHandler) PostAdminQuizCategory(w http.ResponseWriter, r *http.Request){
-	const maxUploadSize = 50 << 20 //6MB
+	const maxUploadSize = 5 << 20 //5MB
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 
 	err := r.ParseMultipartForm(maxUploadSize)
@@ -66,17 +68,15 @@ func (h *QuizzesHandler) PostAdminQuizCategory(w http.ResponseWriter, r *http.Re
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return 
 	}
-	cat := r.FormValue("category")
-	if cat == ""{
-		utils.WriteError(w, http.StatusBadRequest, errors.New("MISSING_FIELDS"))
-		return 
-	}
+
+	// reading json
 	var payload PostCategoryDTO
-	if err := json.Unmarshal([]byte(cat), &payload); err != nil{
-		utils.WriteError(w, http.StatusBadRequest, errors.New("MISSING_FIELDS"))
+	if err :=utils.ReadFormJson(r, "category", &payload); err != nil{
+		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
 
+	// reading image
 	file, _, err := r.FormFile("image")
 	if err != nil{
 		utils.WriteError(w, http.StatusBadRequest, errors.New("MISSING_FIELDS"))
@@ -84,10 +84,14 @@ func (h *QuizzesHandler) PostAdminQuizCategory(w http.ResponseWriter, r *http.Re
 	}
 	defer file.Close()
 
-	//perhaps here I'll add type of image verification
+	// i could check image type here, howeever I'll leave it to the files service
 	err = h.service.CreateQuizCategory(r.Context(), payload.Name, payload.Description, file)
 	if err != nil{
-		utils.WriteError(w, http.StatusBadRequest, err)
+		code, ok := quizzessErrorCodes[err]
+		if !ok{
+			code = 500
+		}
+		utils.WriteError(w, code, err)
 		return
 	}
 	utils.WriteJSON(w, http.StatusCreated, nil)

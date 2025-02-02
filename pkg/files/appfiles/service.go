@@ -1,6 +1,7 @@
 package appfiles
 
 import (
+	"bytes"
 	"context"
 	"image"
 	"image/jpeg"
@@ -9,6 +10,7 @@ import (
 	"math"
 	"net/http"
 	"path/filepath"
+	"time"
 
 	"github.com/diegobermudez03/couples-backend/pkg/files"
 	"github.com/google/uuid"
@@ -17,11 +19,13 @@ import (
 
 type FilesServiceImpl struct{
 	filesRepo 		files.FileRepository
+	dbRepo 			files.Repository
 }
 
-func NewFilesServiceImpl(filesRepo files.FileRepository) files.Service{
+func NewFilesServiceImpl(filesRepo files.FileRepository, dbRepo files.Repository) files.Service{
 	return &FilesServiceImpl{
 		filesRepo: filesRepo,
+		dbRepo: dbRepo,
 	}
 }
 
@@ -76,16 +80,33 @@ func (s *FilesServiceImpl) UploadImage(ctx context.Context, imageReader io.Reade
 		finalImage = imageSrc
 	}
 
+	// creating the hpeg file and getting the bytes
+	var buffer bytes.Buffer
+	if err := jpeg.Encode(&buffer, finalImage, &jpeg.Options{Quality: 80}); err != nil{
+		return nil, files.ErrUploadingImage
+	}
+
 	// store image 
 	bucket := path[0]
-	object := path[len(path)-1]
+	object := path[len(path)-1] + ".jpg"
 	path = path[1:len(path)-1]
 	group := filepath.Join(path...)
-	if err := s.filesRepo.StoreFile(ctx, bucket, group, object, finalImage); err != nil{
+	if err := s.filesRepo.StoreFile(ctx, bucket, group, object, &buffer); err != nil{
 		return nil, err
 	}
 
 	// add to database
-	
-	return nil, nil
+	id := uuid.New()
+	model := files.FileModel{
+		Id: id,
+		Bucket: bucket,
+		Group: group,
+		ObjectKey: object,
+		CreatedAt: time.Now(),
+		Type : files.JPG_TYPE,
+	}
+	if num, err := s.dbRepo.CreateFile(ctx, &model); err != nil || num == 0{
+		return nil, files.ErrUploadingImage
+	}
+	return &id, nil
 }

@@ -11,7 +11,7 @@ type QuizCatPlainModel struct {
 	Name 		string 
 	Description	string 
 	CreatedAt 	time.Time
-	FileId		*uuid.UUID
+	ImageId		*uuid.UUID
 }
 
 

@@ -2,10 +2,7 @@ package repofiles
 
 import (
 	"context"
-	"fmt"
-	"image"
-	"image/jpeg"
-	"log"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -21,19 +18,19 @@ func NewLocalStorage() files.FileRepository{
 	return &LocalStorage{}
 }
 
-func (r *LocalStorage) StoreFile(ctx  context.Context, bucket, group, objectKey string, image image.Image) error{
+func (r *LocalStorage) StoreFile(ctx  context.Context, bucket, group, objectKey string, image io.Reader) error{
 	path := r.getPath(bucket, group)
-	log.Print(path)
 	if err := os.MkdirAll(path, os.ModePerm); err != nil{
 		return err
 	}
-	outWriter, err := os.Create(fmt.Sprint(filepath.Join(path, objectKey), ".jpg"))
+	file, err := os.Create(filepath.Join(path, objectKey))
 	if err != nil{
 		return err 
 	}
-	defer outWriter.Close()
-	if err := jpeg.Encode(outWriter, image, &jpeg.Options{Quality: 80}); err != nil{
-		return err 
+	defer file.Close()
+
+	if _, err := io.Copy(file, image); err != nil{
+		return err
 	}
 	return nil
 }

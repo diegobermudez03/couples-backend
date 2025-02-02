@@ -85,11 +85,12 @@ func (s *APIServer) injectDependencies(router *chi.Mux){
 	//create respositories
 	authRepository := repoauth.NewAuthPostgresRepo(s.db)
 	usersRepository := repousers.NewUsersPostgresRepo(s.db)
-	quizzesRepository := repoquizzes.NewQuizzesPostgresRepo()
+	quizzesRepository := repoquizzes.NewQuizzesPostgresRepo(s.db)
 	filesRepository := repofiles.NewLocalStorage()
+	filesRepo := repofiles.NewFilesPostgresRepo(s.db)
 
 	//create services
-	filesService := appfiles.NewFilesServiceImpl(filesRepository)
+	filesService := appfiles.NewFilesServiceImpl(filesRepository, filesRepo)
 	localizationService := applocalization.NewLocalizationServiceImpl()
 	usersService := appusers.NewUsersServiceImpl(localizationService, usersRepository)
 	authService := appauth.NewAuthService(authRepository, usersService, s.config.AuthConfig.AccessTokenLife, s.config.AuthConfig.RefreshTokenLife, s.config.AuthConfig.JwtSecret)
