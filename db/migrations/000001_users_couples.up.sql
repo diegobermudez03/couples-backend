@@ -34,11 +34,3 @@ CREATE TABLE IF NOT EXISTS points(
     day             DATE NOT NULL,
     user_id         UUID REFERENCES users(id)
 );
-
-CREATE TABLE IF NOT EXISTS couple_levels(
-    id          UUID PRIMARY KEY,
-    level_name  TEXT NOT NULL,
-    level_description TEXT NOT NULL,
-    min_month_points  INTEGER NOT NULL,
-    image_url         TEXT NOT NULL
-);

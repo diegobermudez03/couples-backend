@@ -12,14 +12,14 @@ import (
 )
 
 const (
-	maleGender = "male"
-	femaleGender = "female"
+	MALE_GENDER = "male"
+	FEMALE_GENDER = "female"
 )
 
 /////////  HELPERS
 var genders = map[string]bool{
-	maleGender : true,
-	femaleGender : true,
+	MALE_GENDER : true,
+	FEMALE_GENDER : true,
 }
 
 
@@ -175,7 +175,7 @@ func (s *UsersServiceImpl) ConnectCouple(ctx context.Context, userId uuid.UUID, 
 
 	var heId uuid.UUID
 	var sheId uuid.UUID
-	if user1.Gender == maleGender{
+	if user1.Gender == MALE_GENDER{
 		heId = user1.Id
 		sheId = user2.Id
 	}else{
@@ -205,7 +205,7 @@ func (s *UsersServiceImpl) ConnectCouple(ctx context.Context, userId uuid.UUID, 
 			&users.PointsModel{
 				Id: uuid.New(),
 				Day: time.Now(),
-				Points: users.CouplePointsForConnecting,
+				Points: users.COUPLE_POINTS_FOR_CONNECTING,
 				UserId: &heId,
 			},
 		)
@@ -214,7 +214,7 @@ func (s *UsersServiceImpl) ConnectCouple(ctx context.Context, userId uuid.UUID, 
 			&users.PointsModel{
 				Id: uuid.New(),
 				Day: time.Now(),
-				Points: users.CouplePointsForConnecting,
+				Points: users.COUPLE_POINTS_FOR_CONNECTING,
 				UserId: &sheId,
 			},
 		)

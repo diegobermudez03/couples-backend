@@ -41,4 +41,4 @@ type UsersRepo interface{
 
 
 ///////////////////////// POINTS
-const CouplePointsForConnecting = 50
+const COUPLE_POINTS_FOR_CONNECTING = 50
