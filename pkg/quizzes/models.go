@@ -3,6 +3,7 @@ package quizzes
 import (
 	"time"
 
+	"github.com/diegobermudez03/couples-backend/pkg/files"
 	"github.com/google/uuid"
 )
 
@@ -11,7 +12,8 @@ type QuizCatPlainModel struct {
 	Name 		string 
 	Description	string 
 	CreatedAt 	time.Time
-	ImageId		*uuid.UUID
+	Active 		bool
+	File		*files.FileModel
 }
 
 

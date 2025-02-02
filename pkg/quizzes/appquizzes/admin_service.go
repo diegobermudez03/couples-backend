@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/diegobermudez03/couples-backend/pkg/files"
@@ -50,12 +51,49 @@ func (s *AdminServiceImpl) CreateQuizCategory(ctx context.Context, name, descrip
 		Id: uuid.New(),
 		Name: name,
 		Description: description,
-		ImageId : imageId,
+		File : &files.FileModel{
+			Id : *imageId,
+		},
 		CreatedAt: time.Now(),
+		Active: true,
 	}
 	if num, err :=s.quizzesRepo.CreateCategory(ctx, &quizModel); err != nil || num == 0{
 		log.Print(err)
 		return quizzes.ErrCreatingCategory
 	}
+	return nil
+}
+
+
+func (s *AdminServiceImpl) UpdateQuizCategory(ctx context.Context, id uuid.UUID, name, description string, image io.Reader) error{
+	cat, err := s.quizzesRepo.GetCategoryById(ctx, id)
+	if err != nil{
+		return quizzes.ErrUpdatingCategory
+	} else if cat == nil{
+		return quizzes.ErrNonExistingCategory
+	}
+
+	waitGroup := sync.WaitGroup{}
+
+	if image != nil{
+		waitGroup.Add(1)
+		//will execute asynchronously, if there's any error is ignored xd, I should notify about the error, I should...
+		go func() {
+			s.filesService.UpdateImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, cat.File.Id)
+			waitGroup.Done()
+		}()
+	}
+
+	if name != ""{
+		cat.Name = name 
+	}
+	if description != ""{
+		cat.Description = description
+	}
+
+	if num, err := s.quizzesRepo.UpdateCategory(ctx, cat); err != nil || num == 0{
+		return quizzes.ErrUpdatingCategory
+	}
+	waitGroup.Wait()
 	return nil
 }

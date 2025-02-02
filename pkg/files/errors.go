@@ -7,4 +7,6 @@ var (
 	ErrDetectingImageType = errors.New("ERROR_DETECTING_TYPE")
 	ErrInvalidImageType = errors.New("INVALID_IMAGE_TYPE")
 	ErrUploadingImage 	= errors.New("UNABLE_TO_UPLOAD_IMAGE")
+	ErrUpdatingImage = errors.New("UNABLE_TO_UPDATE_IMAGE")
+	ErrNonExistingImage = errors.New("NON_EXISTING_IMAGE")
 )

@@ -3,8 +3,10 @@ package repofiles
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/diegobermudez03/couples-backend/pkg/files"
+	"github.com/google/uuid"
 )
 
 type FilesPostgresRepo struct {
@@ -18,7 +20,7 @@ func NewFilesPostgresRepo(db *sql.DB) files.Repository{
 }
 
 
-func (r *FilesPostgresRepo)CreateFile(ctx context.Context, file *files.FileModel) (int,error){
+func (r *FilesPostgresRepo) CreateFile(ctx context.Context, file *files.FileModel) (int,error){
 	result, err := r.db.ExecContext(
 		ctx, 
 		`INSERT INTO files(id, bucket, grouping, object_key, created_at, type)
@@ -30,4 +32,22 @@ func (r *FilesPostgresRepo)CreateFile(ctx context.Context, file *files.FileModel
 	}
 	num, _ := result.RowsAffected()
 	return int(num), nil 
+}
+
+func (r *FilesPostgresRepo) GetFileById(ctx context.Context, id uuid.UUID) (*files.FileModel, error){
+	row := r.db.QueryRowContext(
+		ctx, 
+		`SELECT id, bucket, grouping, object_key, created_at, type
+		FROM files WHERE id = $1`,
+		id,
+	)
+	model := new(files.FileModel)
+	err := row.Scan(&model.Id, &model.Bucket, &model.Group, &model.ObjectKey, &model.CreatedAt, &model.Type)
+	if errors.Is(err, sql.ErrNoRows){
+		return nil, nil
+	}
+	if err != nil{
+		return nil, err 
+	}
+	return model, nil
 }

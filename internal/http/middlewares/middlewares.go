@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	ErrNoAccessToken = errors.New("no access token provided")
+	ErrNoAccessToken = errors.New("NO_ACCESS_TOKEN_PROVIDED")
 )
 
 type userIdKeyType string
