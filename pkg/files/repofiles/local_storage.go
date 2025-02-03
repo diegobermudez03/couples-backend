@@ -35,6 +35,14 @@ func (r *LocalStorage) StoreFile(ctx  context.Context, bucket, group, objectKey 
 	return nil
 }
 
+func (r *LocalStorage) GetFile(ctx context.Context, path string) (*os.File, error){
+	file, err := os.Open(filepath.Join("..", ROOT_FOLDER, path))
+	if err != nil{
+		return nil, err
+	}
+	return file, nil
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////

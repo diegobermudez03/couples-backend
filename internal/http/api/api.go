@@ -82,6 +82,7 @@ func (s *APIServer) Shutdown() error{
 
 
 func (s *APIServer) injectDependencies(router *chi.Mux){
+	baseUrl := "http://localhost:" + s.config.Port + "/v1"
 	//create respositories
 	authRepository := repoauth.NewAuthPostgresRepo(s.db)
 	usersRepository := repousers.NewUsersPostgresRepo(s.db)
@@ -90,12 +91,12 @@ func (s *APIServer) injectDependencies(router *chi.Mux){
 	filesRepo := repofiles.NewFilesPostgresRepo(s.db)
 
 	//create services
-	filesService := appfiles.NewFilesServiceImpl(filesRepository, filesRepo)
+	filesService := appfiles.NewFilesServiceImpl(filesRepository, filesRepo, baseUrl)
 	localizationService := applocalization.NewLocalizationServiceImpl()
 	usersService := appusers.NewUsersServiceImpl(localizationService, usersRepository)
 	authService := appauth.NewAuthService(authRepository, usersService, s.config.AuthConfig.AccessTokenLife, s.config.AuthConfig.RefreshTokenLife, s.config.AuthConfig.JwtSecret)
 	authAdminService := appauth.NewAdminAuthService(authRepository, s.config.AuthConfig.JwtSecret, s.config.AuthConfig.AccessTokenLife)
-	quizzesAdminService := appquizzes.NewAdminServiceImpl(filesService, quizzesRepository)
+	quizzesAdminService := appquizzes.NewAdminServiceImpl(filesService, localizationService,quizzesRepository)
 
 	//middlewares
 	middlewares := middlewares.NewMiddlewares(authService, authAdminService)
@@ -103,9 +104,11 @@ func (s *APIServer) injectDependencies(router *chi.Mux){
 	authHandler := handlers.NewAuthHandler(authService, authAdminService, middlewares)
 	usersHandler := handlers.NewUsersHandler(usersService, middlewares)
 	quizzesHandler := handlers.NewQuizzesHandler(quizzesAdminService, middlewares)
+	filesHandler := handlers.NewFilesHandler(filesService)
 
 	//registering routes
 	authHandler.RegisterRoutes(router)
 	usersHandler.RegisterRoutes(router)
 	quizzesHandler.RegisterRoutes(router)
+	filesHandler.RegisterRoutes(router)
 }

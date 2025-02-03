@@ -1,8 +1,6 @@
 package files
 
 import (
-	"time"
-
 	"github.com/google/uuid"
 )
 
@@ -11,6 +9,7 @@ type FileModel struct {
 	Bucket    string
 	Group 	  string
 	ObjectKey string
+	Url 		*string
+	Public 		bool
 	Type      string
-	CreatedAt time.Time
 }

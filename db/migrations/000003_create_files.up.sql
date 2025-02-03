@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS files(
     bucket      TEXT NOT NULL,
     grouping       TEXT NOT NULL,
     object_key  TEXT NOT NULL,
-    created_at  TIMESTAMP NOT NULL,
+    url         TEXT,
+    public      BOOLEAN NOT NULL,
     type        TEXT NOT NULL
 );

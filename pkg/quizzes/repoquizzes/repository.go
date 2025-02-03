@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/diegobermudez03/couples-backend/pkg/files"
 	"github.com/diegobermudez03/couples-backend/pkg/quizzes"
 	"github.com/google/uuid"
 )
@@ -24,10 +23,8 @@ func NewQuizzesPostgresRepo(db *sql.DB) quizzes.QuizzesRepository{
 func (r *QuizzesPostgresRepo) GetCategoryByName(ctx context.Context, name string)(*quizzes.QuizCatPlainModel, error){
 	row := r.db.QueryRowContext(
 		ctx,
-		`SELECT q.id, q.name, q.description, q.created_at, q.image_id, q.active, f.bucket, f.grouping, f.object_key, f.created_at, f.type
-		FROM quiz_categories q 
-		INNER JOIN files f ON f.id = q.image_id 
-		AND q.name = $1 AND q.active = TRUE`, 
+		`SELECT id, name, description, created_at, active, image_id
+		FROM quiz_categories where name = $1 AND active = TRUE`, 
 		name,
 	)
 	return r.rowToCategory(row)
@@ -36,10 +33,8 @@ func (r *QuizzesPostgresRepo) GetCategoryByName(ctx context.Context, name string
 func (r *QuizzesPostgresRepo) GetCategoryById(ctx context.Context, id uuid.UUID)(*quizzes.QuizCatPlainModel, error){
 	row := r.db.QueryRowContext(
 		ctx,
-		`SELECT q.id, q.name, q.description, q.created_at, q.image_id, q.active, f.bucket, f.grouping, f.object_key, f.created_at, f.type
-		FROM quiz_categories q 
-		INNER JOIN files f ON f.id = q.image_id 
-		AND q.id = $1 AND q.active = TRUE`, 
+		`SELECT id, name, description, created_at, ACTIVE, image_id
+		FROM quiz_categories WHERE id = $1 AND active = TRUE`, 
 		id,
 	)
 	return r.rowToCategory(row)
@@ -51,7 +46,7 @@ func (r *QuizzesPostgresRepo) CreateCategory(ctx context.Context, category *quiz
 		ctx, 
 		`INSERT INTO quiz_categories(id, name, description, created_at, image_id, active)
 		VALUES($1, $2, $3, $4, $5, $6)`,
-		category.Id, category.Name, category.Description, category.CreatedAt, category.File.Id, category.Active,
+		category.Id, category.Name, category.Description, category.CreatedAt, category.ImageId, category.Active,
 	)
 	if err != nil{
 		return 0, err 
@@ -74,16 +69,30 @@ func (r *QuizzesPostgresRepo) UpdateCategory(ctx context.Context, category *quiz
 	return int(num), nil
 }
 
+func (r *QuizzesPostgresRepo) CreateQuiz(ctx context.Context, quiz *quizzes.QuizPlainModel) (int, error){
+	result, err := r.db.ExecContext(
+		ctx,
+		`INSERT INTO quizzes(id, name, description, language_code, image_id, published, active, created_at, category_id, creator_id)
+		VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		quiz.Id, quiz.Name, quiz.Description, quiz.LanguageCode, quiz.ImageId, quiz.Published, quiz.Active,
+		quiz.CreatedAt, quiz.CategoryId, quiz.CreatorId,
+	)
+
+	if err != nil{
+		return 0, err 
+	}
+	num, _ := result.RowsAffected()
+	return int(num), nil
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
 
 func (r *QuizzesPostgresRepo) rowToCategory(row *sql.Row) (*quizzes.QuizCatPlainModel, error){
 	model := new(quizzes.QuizCatPlainModel)
-	model.File = new(files.FileModel)
-	err := row.Scan(&model.Id, &model.Name, &model.Description, &model.CreatedAt, &model.File.Id, &model.Active,
-		&model.File.Bucket, &model.File.Group, &model.File.ObjectKey, &model.File.CreatedAt, &model.File.Type,
-	)
+	err := row.Scan(&model.Id, &model.Name, &model.Description, &model.CreatedAt, &model.Active, &model.ImageId)
 	if err != nil{
 		if errors.Is(err, sql.ErrNoRows){
 			return nil, nil 

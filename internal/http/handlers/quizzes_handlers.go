@@ -37,7 +37,12 @@ func (h *QuizzesHandler) RegisterRoutes(r *chi.Mux){
 
 	routerAdmin.Post("/categories", h.postAdminQuizCategory)
 	routerAdmin.Patch(fmt.Sprintf("/categories/{%s}", CAT_ID_URL_PARAM), h.patchAdminQuizCategory)
-	routerAdmin.Delete(fmt.Sprintf("/categories/{%s}", CAT_ID_URL_PARAM), h.deleteAdminQuizCategory)
+	routerAdmin.Post(fmt.Sprintf("/categories/{%s}/quizzes", CAT_ID_URL_PARAM), h.postAdminQuiz)
+	//routerAdmin.Delete(fmt.Sprintf("/categories/{%s}", CAT_ID_URL_PARAM), h.deleteAdminQuizCategory)
+
+
+
+	//routerUsers.Get("/categories", h.getCategories)
 }
 
 
@@ -48,16 +53,21 @@ func (h *QuizzesHandler) RegisterRoutes(r *chi.Mux){
 ///////////////////////////////////////////////////////////////////////////////////
 
 ///// DTOS
-type PostCategoryDTO struct{
+type postCategoryDTO struct{
 	Name 		string 	`json:"name" validate:"required"`
 	Description string 	`json:"description" validate:"required"`
 }
 
-type PutCategoryDTO struct{
+type patchCategoryDTO struct{
 	Name 		string 	`json:"name"`
 	Description string 	`json:"description"`
 }
 
+type postAdminQuizDTO struct{
+	Name 		string 	`json:"name" validate:"required"`
+	Description string 	`json:"description" validate:"required"`
+	LanguageCode string 	`json:"languageCode" validate:"required"`
+}
 
 /////////////////////////////////// ERRORS CODES
 
@@ -68,7 +78,9 @@ var quizzessErrorCodes = map[error] int{
 }
 
 
-///////////////////////////////// HANDLERS 
+///////////////////////////////// ADMIN HANDLERS	/////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////
 
 func (h *QuizzesHandler) postAdminQuizCategory(w http.ResponseWriter, r *http.Request){
 	const maxUploadSize = 5 << 20 //5MB
@@ -81,7 +93,7 @@ func (h *QuizzesHandler) postAdminQuizCategory(w http.ResponseWriter, r *http.Re
 	}
 
 	// reading json
-	var payload PostCategoryDTO
+	var payload postCategoryDTO
 	if err :=utils.ReadFormJson(r, "category", &payload); err != nil{
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
@@ -126,8 +138,8 @@ func (h *QuizzesHandler) patchAdminQuizCategory(w http.ResponseWriter, r *http.R
 	}
 
 	// reading json
-	var payload PutCategoryDTO
-	utils.ReadFormJson(r, "category", &payload)
+	var payload patchCategoryDTO
+	utils.ReadFormJson(r, "quiz", &payload)
 
 	// reading image
 	file, _, err := r.FormFile("image")
@@ -148,5 +160,45 @@ func (h *QuizzesHandler) patchAdminQuizCategory(w http.ResponseWriter, r *http.R
 	utils.WriteJSON(w, http.StatusOK, nil)
 }
 
-func (h *QuizzesHandler) deleteAdminQuizCategory(w http.ResponseWriter, r *http.Request){
+func (h *QuizzesHandler) postAdminQuiz(w http.ResponseWriter, r *http.Request){
+	categoryId := chi.URLParam(r, CAT_ID_URL_PARAM)
+	catParsed, err := uuid.Parse(categoryId)
+	if err != nil{
+		utils.WriteError(w, http.StatusBadRequest, errors.New("EMPTY_CATEGORY_ID"))
+		return 
+	}
+	const maxUploadSize = 5 << 20 //5MB
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+
+	err = r.ParseMultipartForm(maxUploadSize)
+	if err != nil{
+		utils.WriteError(w, http.StatusBadRequest, errors.New("FILE_TOO_BIG"))
+		return 
+	}
+
+	var payload postAdminQuizDTO
+	if err := utils.ReadFormJson(r, "quiz", &payload); err != nil{
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return 
+	}
+
+	// reading image
+	file, _, err := r.FormFile("image")
+	if err != nil{
+		file = nil
+	}else{
+		defer file.Close()
+	}
+
+	err = h.service.CreateQuiz(r.Context(), payload.Name, payload.Description, payload.LanguageCode,catParsed, file)
+	if err != nil{
+		code, ok := quizzessErrorCodes[err]
+		if !ok{
+			code = 500
+		}
+		utils.WriteError(w, code, err)
+		return 
+	}
+	utils.WriteJSON(w, http.StatusCreated, nil)
 }
+

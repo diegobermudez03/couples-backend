@@ -9,8 +9,8 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/diegobermudez03/couples-backend/pkg/files"
 	"github.com/google/uuid"
@@ -20,17 +20,19 @@ import (
 type FilesServiceImpl struct{
 	filesRepo 		files.FileRepository
 	dbRepo 			files.Repository
+	baseURL			string
 }
 
-func NewFilesServiceImpl(filesRepo files.FileRepository, dbRepo files.Repository) files.Service{
+func NewFilesServiceImpl(filesRepo files.FileRepository, dbRepo files.Repository, baseURL string) files.Service{
 	return &FilesServiceImpl{
 		filesRepo: filesRepo,
 		dbRepo: dbRepo,
+		baseURL: baseURL,
 	}
 }
 
 
-func (s *FilesServiceImpl) UploadImage(ctx context.Context, imageReader io.Reader,  maxSize int64, path ...string) (*uuid.UUID,error){
+func (s *FilesServiceImpl) UploadImage(ctx context.Context, imageReader io.Reader,  maxSize int64, public bool, path ...string) (*uuid.UUID,error){
 	if len(path) < 3{
 		return nil, files.ErrPathNotLongEnough
 	}
@@ -38,6 +40,12 @@ func (s *FilesServiceImpl) UploadImage(ctx context.Context, imageReader io.Reade
 	buffer, err := s.compressToJPG(imageReader, int(maxSize))
 	if err != nil{
 		return nil, err
+	}
+
+	var url *string 
+	if public{
+		tempUrl :=  s.baseURL + "/files/images/" + filepath.Join(path...) + ".jpg"
+		url = &tempUrl
 	}
 
 	// store image 
@@ -56,7 +64,8 @@ func (s *FilesServiceImpl) UploadImage(ctx context.Context, imageReader io.Reade
 		Bucket: bucket,
 		Group: group,
 		ObjectKey: object,
-		CreatedAt: time.Now(),
+		Public: public,
+		Url: url,
 		Type : files.JPG_TYPE,
 	}
 	if num, err := s.dbRepo.CreateFile(ctx, &model); err != nil || num == 0{
@@ -86,6 +95,14 @@ func (s *FilesServiceImpl) UpdateImage(ctx context.Context, image io.Reader, max
 	return nil
 }
 
+
+func (s *FilesServiceImpl) GetImage(ctx context.Context, path string) (*os.File, string, error){
+	file, err := s.filesRepo.GetFile(ctx, path)
+	if err != nil{
+		return nil, "", err
+	}
+	return file, files.JPG_TYPE, nil
+}
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

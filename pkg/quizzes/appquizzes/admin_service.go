@@ -10,20 +10,23 @@ import (
 	"time"
 
 	"github.com/diegobermudez03/couples-backend/pkg/files"
+	"github.com/diegobermudez03/couples-backend/pkg/localization"
 	"github.com/diegobermudez03/couples-backend/pkg/quizzes"
 	"github.com/google/uuid"
 )
 
 type AdminServiceImpl struct {
 	filesService 	files.Service
+	loacalizationService localization.LocalizationService
 	quizzesRepo 	quizzes.QuizzesRepository
 
 }
 
-func NewAdminServiceImpl(filesService 	files.Service, quizzesRepo quizzes.QuizzesRepository) quizzes.AdminService{
+func NewAdminServiceImpl(filesService files.Service, loacalizationService localization.LocalizationService,  quizzesRepo quizzes.QuizzesRepository) quizzes.AdminService{
 	return &AdminServiceImpl{
 		filesService: filesService,
 		quizzesRepo: quizzesRepo,
+		loacalizationService:loacalizationService,
 	}
 }
 
@@ -37,8 +40,9 @@ func (s *AdminServiceImpl) CreateQuizCategory(ctx context.Context, name, descrip
 	if err == nil && cat != nil{
 		return quizzes.ErrCategoryAlreadyExists
 	}
+	categoryId := uuid.New()
 
-	imageId, err := s.filesService.UploadImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, quizzes.DOMAIN_NAME,quizzes.CATEGORIES, name)
+	imageId, err := s.filesService.UploadImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, true, quizzes.DOMAIN_NAME, quizzes.CATEGORIES, categoryId.String(), quizzes.PROFILE)
 	if err != nil{
 		if errors.Is(err, files.ErrInvalidImageType){
 			return quizzes.ErrInvalidImageType
@@ -48,12 +52,10 @@ func (s *AdminServiceImpl) CreateQuizCategory(ctx context.Context, name, descrip
 	}	
 	
 	quizModel := quizzes.QuizCatPlainModel{
-		Id: uuid.New(),
+		Id: categoryId,
 		Name: name,
 		Description: description,
-		File : &files.FileModel{
-			Id : *imageId,
-		},
+		ImageId: *imageId,
 		CreatedAt: time.Now(),
 		Active: true,
 	}
@@ -79,7 +81,7 @@ func (s *AdminServiceImpl) UpdateQuizCategory(ctx context.Context, id uuid.UUID,
 		waitGroup.Add(1)
 		//will execute asynchronously, if there's any error is ignored xd, I should notify about the error, I should...
 		go func() {
-			s.filesService.UpdateImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, cat.File.Id)
+			s.filesService.UpdateImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, cat.ImageId)
 			waitGroup.Done()
 		}()
 	}
@@ -95,5 +97,48 @@ func (s *AdminServiceImpl) UpdateQuizCategory(ctx context.Context, id uuid.UUID,
 		return quizzes.ErrUpdatingCategory
 	}
 	waitGroup.Wait()
+	return nil
+}
+
+
+func (s *AdminServiceImpl) CreateQuiz(ctx context.Context, name, description, languageCode string, categoryId uuid.UUID, image io.Reader) error{
+	if name == ""{
+		return quizzes.ErrEmptyQuizName
+	}
+	if err := s.loacalizationService.ValidateLanguage(languageCode); err != nil{
+		return quizzes.ErrInvalidLanguage
+	}
+
+	cat, err := s.quizzesRepo.GetCategoryById(ctx, categoryId)
+	if err != nil{
+		log.Print(err.Error())
+		return quizzes.ErrCreatingQuiz
+	} else if cat == nil{
+		return quizzes.ErrCategoryDontExists
+	}
+
+	quizId := uuid.New()
+	var imageId *uuid.UUID
+	if image != nil{
+		imageId, _ = s.filesService.UploadImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, true, quizzes.DOMAIN_NAME, quizzes.QUIZZES, quizId.String(), quizzes.PROFILE)
+	}
+
+	model := quizzes.QuizPlainModel{
+		Id: quizId,
+		Name: name,
+		Description: description,
+		LanguageCode: languageCode,
+		ImageId: imageId,
+		Published: false,
+		Active: true,
+		CreatedAt: time.Now(),
+		CategoryId: categoryId,
+		CreatorId: nil,
+	}
+
+	if num, err := s.quizzesRepo.CreateQuiz(ctx, &model); err != nil || num == 0{
+		log.Print(err.Error())
+		return quizzes.ErrCreatingQuiz
+	}
 	return nil
 }

@@ -3,13 +3,15 @@ package files
 import (
 	"context"
 	"io"
+	"os"
 
 	"github.com/google/uuid"
 )
 
 type Service interface {
-	UploadImage(ctx context.Context, image io.Reader, maxSize int64, path ...string) (*uuid.UUID,error)
+	UploadImage(ctx context.Context, image io.Reader, maxSize int64, public bool, path ...string) (*uuid.UUID,error)
 	UpdateImage(ctx context.Context, image io.Reader, maxSize int64, id uuid.UUID) (error)
+	GetImage(ctx context.Context, path string) (*os.File, string, error)
 	//DeleteImage(ctx context.Context, imageId uuid.UUID) error
 }
 
@@ -20,6 +22,7 @@ type Repository interface{
 
 type FileRepository interface{
 	StoreFile(ctx  context.Context, bucket, group, objectKey string, image io.Reader) error
+	GetFile(ctx context.Context, path string) (*os.File, error)
 }
 
 
