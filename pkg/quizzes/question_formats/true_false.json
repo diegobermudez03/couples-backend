@@ -1,0 +1,25 @@
+
+{
+    "question_options": {
+
+    },
+
+    "answer_format" :{
+        "answer" : true
+    },
+
+    "review_format" : {
+        "yours" : {
+            "correctAnswer" : true,
+            "answer" : false,
+            "correct" : false,
+            "points" : 0
+        },
+        "partners" : {
+            "correctAnswer" : false,
+            "answer" : false,
+            "correct" : true,
+            "points" : 15
+        }
+    }
+}

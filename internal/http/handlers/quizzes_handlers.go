@@ -13,6 +13,7 @@ import (
 )
 
 const CAT_ID_URL_PARAM = "catId"
+const QUIZ_ID_URL_PARAM = "quizId"
 
 type QuizzesHandler struct {
 	service quizzes.AdminService
@@ -38,6 +39,7 @@ func (h *QuizzesHandler) RegisterRoutes(r *chi.Mux){
 	routerAdmin.Post("/categories", h.postAdminQuizCategory)
 	routerAdmin.Patch(fmt.Sprintf("/categories/{%s}", CAT_ID_URL_PARAM), h.patchAdminQuizCategory)
 	routerAdmin.Post(fmt.Sprintf("/categories/{%s}/quizzes", CAT_ID_URL_PARAM), h.postAdminQuiz)
+	routerAdmin.Patch(fmt.Sprintf("/{%s}", QUIZ_ID_URL_PARAM), h.patchAdminQuiz)
 	//routerAdmin.Delete(fmt.Sprintf("/categories/{%s}", CAT_ID_URL_PARAM), h.deleteAdminQuizCategory)
 
 
@@ -68,6 +70,13 @@ type postAdminQuizDTO struct{
 	Description string 	`json:"description" validate:"required"`
 	LanguageCode string 	`json:"languageCode" validate:"required"`
 }
+
+type patchQuizDTO struct{
+	Name 		string 	`json:"name"`
+	Description string 	`json:"description"`
+	CategoryId 	*uuid.UUID	`json:"categoryId"`
+}
+
 
 /////////////////////////////////// ERRORS CODES
 
@@ -191,6 +200,50 @@ func (h *QuizzesHandler) postAdminQuiz(w http.ResponseWriter, r *http.Request){
 	}
 
 	err = h.service.CreateQuiz(r.Context(), payload.Name, payload.Description, payload.LanguageCode,catParsed, file)
+	if err != nil{
+		code, ok := quizzessErrorCodes[err]
+		if !ok{
+			code = 500
+		}
+		utils.WriteError(w, code, err)
+		return 
+	}
+	utils.WriteJSON(w, http.StatusCreated, nil)
+}
+
+
+
+func (h *QuizzesHandler) patchAdminQuiz(w http.ResponseWriter, r *http.Request){
+	quizId := chi.URLParam(r, QUIZ_ID_URL_PARAM)
+	quizParsed, err := uuid.Parse(quizId)
+	if err != nil{
+		utils.WriteError(w, http.StatusBadRequest, errors.New("EMPTY_QUIZ_ID"))
+		return 
+	}
+	const maxUploadSize = 5 << 20 //5MB
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+
+	err = r.ParseMultipartForm(maxUploadSize)
+	if err != nil{
+		utils.WriteError(w, http.StatusBadRequest, errors.New("FILE_TOO_BIG"))
+		return 
+	}
+
+	var payload patchQuizDTO
+	if err := utils.ReadFormJson(r, "quiz", &payload); err != nil{
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return 
+	}
+
+	// reading image
+	file, _, err := r.FormFile("image")
+	if err != nil{
+		file = nil
+	}else{
+		defer file.Close()
+	}
+
+	err = h.service.UpdateQuiz(r.Context(), quizParsed, payload.Name, payload.Description, payload.CategoryId, file)
 	if err != nil{
 		code, ok := quizzessErrorCodes[err]
 		if !ok{

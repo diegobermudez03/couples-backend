@@ -1,0 +1,22 @@
+ {
+    "question_format": {},
+
+    "answer_format" :{
+        "answer" : 72 
+    },
+
+    "review_format": {
+        "yours" : {
+            "correctAnswer" : 76,
+            "answer" : 71,
+            "correct" : true,
+            "points" : 14
+        },
+        "partners" : {
+            "correctAnswer" : 41,
+            "answer" : 14,
+            "correct": false,
+            "points" : 0
+        }
+    }
+}

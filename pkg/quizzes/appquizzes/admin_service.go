@@ -142,3 +142,44 @@ func (s *AdminServiceImpl) CreateQuiz(ctx context.Context, name, description, la
 	}
 	return nil
 }
+
+
+func (s *AdminServiceImpl)  UpdateQuiz(ctx context.Context, quizId uuid.UUID, name, description string, categoryId *uuid.UUID, image io.Reader) error{
+	quiz, err := s.quizzesRepo.GetQuizById(ctx, quizId)
+	if err != nil{
+		return quizzes.ErrUpdatingQuiz
+	}else if quiz == nil{
+		return quizzes.ErrQuizNotFound
+	}
+
+	//if we are updating the image
+	if image != nil{
+		//if there was already an image
+		if quiz.ImageId != nil{
+			s.filesService.UpdateImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, *quiz.ImageId)
+		} else{
+			//if its a new image
+			id, err := s.filesService.UploadImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, true, quizzes.DOMAIN_NAME, quizzes.QUIZZES, quiz.Id.String(), quizzes.PROFILE)
+			if err == nil{
+				quiz.ImageId = id
+			}
+		}
+	}
+
+	if name != ""{
+		quiz.Name = name
+	}
+	if description != ""{
+		quiz.Description = description
+	}
+	if categoryId != nil{
+		if cat, err := s.quizzesRepo.GetCategoryById(ctx, *categoryId); err == nil && cat != nil{
+			quiz.CategoryId = *categoryId
+		} 
+	}
+
+	if num, err := s.quizzesRepo.UpdateQuiz(ctx, quiz); num == 0 || err != nil{
+		return quizzes.ErrUpdatingQuiz
+	}
+	return nil 
+}

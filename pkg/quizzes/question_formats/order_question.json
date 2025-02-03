@@ -1,0 +1,39 @@
+{
+    "question_format": {
+        "options" : [
+            "option1",
+            "option2",
+            "option3"
+        ]
+    },
+
+
+    "answer_format":{
+        "answer" : [
+            "option3", 
+            "option1",
+            "option2"
+        ]
+    },
+
+    "review_format":{
+        "yours" : {
+            "answers" : [
+                {"correctAnswer" : "option2", "answer" : "option3", "correct": false},
+                {"correctAnswer" : "option3", "answer" : "option2", "correct": false},
+                {"correctAnswer" : "option1", "answer" : "option1", "correct": true}
+            ],
+            "percentage" : 33.3,
+            "points" : 4
+        },
+        "partners" : {
+            "answers" : [
+                {"correctAnswer" : "option2", "answer" : "option3", "correct": false},
+                {"correctAnswer" : "option3", "answer" : "option2", "correct": false},
+                {"correctAnswer" : "option1", "answer" : "option1", "correct": true}
+            ],
+            "percentage" : 33.3,
+            "points" : 4
+        }
+    }
+}

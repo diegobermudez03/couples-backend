@@ -1,0 +1,21 @@
+{
+    "question_format": {
+        "numberOptions" : 5
+    },
+
+    "answer_format":{
+        "answers" : [
+            "answer 1",
+            "answer 2",
+            "answer 3", 
+            "anser 4",
+            "answer 5"
+        ]
+    },
+
+    "review_format" :{
+        "yours" : {
+            
+        }
+    }
+}

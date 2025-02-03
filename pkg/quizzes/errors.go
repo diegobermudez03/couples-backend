@@ -13,4 +13,6 @@ var (
 	ErrCategoryDontExists = errors.New("CATEGORY_DOESNT_EXIST")
 	ErrEmptyQuizName = errors.New("EMPTY_QUIZ_NAME")
 	ErrInvalidLanguage = errors.New("INVALID_LANGUAGE")
+	ErrUpdatingQuiz = errors.New("UNABLE_TO_UPDATE_QUIZ")
+	ErrQuizNotFound = errors.New("QUIZ_NOT_FOUND")
 )

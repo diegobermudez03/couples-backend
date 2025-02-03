@@ -1,0 +1,14 @@
+{
+    "options" : [
+        "option1",
+        "option2",
+        "option3"
+    ]
+}
+
+{
+    "answers" : [
+        "option1",
+        "option2"
+    ]
+}

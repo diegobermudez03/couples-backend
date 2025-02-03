@@ -1,0 +1,54 @@
+{
+    "question_options" :{
+        "boxes" : [
+            "things I love",
+            "things I hate",
+            "things I don't care"
+        ],
+
+        "options" : [
+            { "txt": "go swiming", "imId" : "fgdfgf34dg", "url" : ".com/files"},
+            { "txt": "go hiking"},
+            { "txt": "sleeping", "imId" : "fg43fdgd",  "url" : ".com/files"},
+            { "txt": "eating"},
+            { "txt": "running"},
+            { "txt": "studying", "imId" : "dfgd4r53",  "url" : ".com/files"}
+        ]
+    },
+
+    "answer_format" : {
+        "answers" : [
+            {
+                "box" : "things I love",
+                "options" : [
+                    "go swiming",
+                    "sleeping"
+                ]
+            },
+            {
+                "box" : "things I hate",
+                "options" : [
+                    "running",
+                    "studying"
+                ]
+            },
+            {
+                "box" : "things I don't care",
+                "options" : [
+                    "eating"
+                ]
+            }
+        ]
+    },
+
+    "review_format" : {
+        "yours" : [
+            {
+                
+            }
+        ],
+        "partners" : {
+
+        }
+    }
+}

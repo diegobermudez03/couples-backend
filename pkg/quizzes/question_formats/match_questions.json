@@ -1,0 +1,30 @@
+{
+    "options_left" : [
+        "sushi",
+        "burguer",
+        "pizza"
+    ],
+    "options_right" : [
+        "EEUU",
+        "Japan",
+        "Italy"
+    ]
+}
+
+
+{
+    "answers" : [
+        {
+            "option1" : "sushi",
+            "option2" : "japan"
+        },
+        {
+            "option1" : "burguer",
+            "option2" : "EEUU"
+        },
+        {
+            "option1" : "pizza",
+            "option2" : "italy"
+        }
+    ]
+}

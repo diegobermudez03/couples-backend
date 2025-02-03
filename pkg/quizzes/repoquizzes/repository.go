@@ -69,6 +69,23 @@ func (r *QuizzesPostgresRepo) UpdateCategory(ctx context.Context, category *quiz
 	return int(num), nil
 }
 
+func (r *QuizzesPostgresRepo) GetQuizById(ctx context.Context, id uuid.UUID) (*quizzes.QuizPlainModel, error){
+	row := r.db.QueryRowContext(
+		ctx,
+		`SELECT id, name, description, language_code, image_id, published, active, created_at, category_id, creator_id
+		FROM quizzes WHERE id = $1`,
+		id,
+	)
+	m := new(quizzes.QuizPlainModel)
+	err := row.Scan(&m.Id, &m.Name, &m.Description, &m.LanguageCode, &m.ImageId, &m.Published, &m.Active, &m.CreatedAt, &m.CategoryId, &m.CreatorId)
+	if errors.Is(err, sql.ErrNoRows){
+		return nil, nil 
+	}else if err != nil{
+		return nil, err 
+	}
+	return m, nil
+}
+
 func (r *QuizzesPostgresRepo) CreateQuiz(ctx context.Context, quiz *quizzes.QuizPlainModel) (int, error){
 	result, err := r.db.ExecContext(
 		ctx,
@@ -78,6 +95,21 @@ func (r *QuizzesPostgresRepo) CreateQuiz(ctx context.Context, quiz *quizzes.Quiz
 		quiz.CreatedAt, quiz.CategoryId, quiz.CreatorId,
 	)
 
+	if err != nil{
+		return 0, err 
+	}
+	num, _ := result.RowsAffected()
+	return int(num), nil
+}
+
+
+func (r *QuizzesPostgresRepo) UpdateQuiz(ctx context.Context, quiz *quizzes.QuizPlainModel) (int, error){
+	result, err := r.db.ExecContext(
+		ctx, 
+		`UPDATE quizzes SET name = $1, description = $2, category_id = $3, image_id = $4, active = $5, published = $6
+		WHERE id = $7`,
+		quiz.Name, quiz.Description, quiz.CategoryId, quiz.ImageId, quiz.Active, quiz.Published, quiz.Id,
+	)
 	if err != nil{
 		return 0, err 
 	}
