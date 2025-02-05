@@ -1,39 +1,51 @@
 {
     "question_format": {
+        "sortingType": "LEAST_TO_MOST",
         "options" : [
-            "option1",
-            "option2",
-            "option3"
+            {"optId": 1, "name" :"option1", "imId" : "1sd4f4sd", "url" : ".com/dsds"},
+            {"optId": 2, "name" :"option2"},
+            {"optId": 3, "name" :"option3", "imId" : "1sd4f4sd", "url" : ".com/dsds"}
         ]
     },
 
 
     "answer_format":{
-        "answer" : [
-            "option3", 
-            "option1",
-            "option2"
+        "ownAnswers" : [
+            {"optId" : 3, "rank": 1}, 
+            {"optId" : 1, "rank": 2}, 
+            {"optId" : 2, "rank": 3}
+        ],
+
+        "guessedPartner" : [
+            {"optId" : 3, "rank": 1}, 
+            {"optId" : 1, "rank": 2}, 
+            {"optId" : 2, "rank": 3}
         ]
     },
 
     "review_format":{
-        "yours" : {
-            "answers" : [
-                {"correctAnswer" : "option2", "answer" : "option3", "correct": false},
-                {"correctAnswer" : "option3", "answer" : "option2", "correct": false},
-                {"correctAnswer" : "option1", "answer" : "option1", "correct": true}
+        "options" : [
+            {"optId": 1, "name" :"option1", "url" : ".com/dsds"},
+            {"optId": 2, "name" :"option2"},
+            {"optId": 3, "name" :"option3", "url" : ".com/dsds"}
+        ],
+        "you" : {
+            "userId" : "sd54f4sd5",
+            "answer" : [
+                {"actualPartnerAnswer" : 2, "guessedForPartner" : 3, "points": -5, "rank" : 1},
+                {"actualPartnerAnswer" : 3, "guessedForPartner" : 2, "points": -5, "rank" : 2},
+                {"actualPartnerAnswer" : 1, "guessedForPartner" : 1, "points": 5, "rank" : 3}
             ],
-            "percentage" : 33.3,
-            "points" : 4
+            "points" : -5
         },
-        "partners" : {
-            "answers" : [
-                {"correctAnswer" : "option2", "answer" : "option3", "correct": false},
-                {"correctAnswer" : "option3", "answer" : "option2", "correct": false},
-                {"correctAnswer" : "option1", "answer" : "option1", "correct": true}
+        "partner" : {
+            "userId" : "sd54f4sd5",
+            "answer" : [
+                {"actualPartnerAnswer" : 1, "guessedForPartner" : 3, "points": -5, "rank" : 1},
+                {"actualPartnerAnswer" : 3, "guessedForPartner" : 2, "points": -5, "rank" : 2},
+                {"actualPartnerAnswer" : 2, "guessedForPartner" : 1, "points": -5, "rank" : 3}
             ],
-            "percentage" : 33.3,
-            "points" : 4
+            "points" : -15
         }
     }
 }

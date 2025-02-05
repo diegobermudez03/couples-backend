@@ -1,21 +1,79 @@
 {
-    "question_format": {
-        "numberOptions" : 5
+    "question_options": {
+        "numAnswers": 3
     },
 
-    "answer_format":{
-        "answers" : [
-            "answer 1",
-            "answer 2",
-            "answer 3", 
-            "anser 4",
-            "answer 5"
+    "answer_format": {
+        "ownAnswer": [
+            "Graduated from college",
+            "First time traveling alone",
+            "Met my best friend"
+        ],
+        "guessedPartner": [
+            "Got my first job",
+            "First time traveling abroad",
+            "Met my childhood friend"
         ]
     },
 
-    "review_format" :{
-        "yours" : {
-            
+    "review_format": {
+        "you": {
+            "userId": "54sdf5ds64sd",
+            "guessedForPartner": [
+                {
+                    "guess": "Got my first job",
+                    "matchedWith": null,
+                    "correct": false,
+                    "points": 0
+                },
+                {
+                    "guess": "First time traveling abroad",
+                    "matchedWith": "First time traveling alone",
+                    "correct": true,
+                    "points": 5
+                },
+                {
+                    "guess": "Met my childhood friend",
+                    "matchedWith": "Met my best friend",
+                    "correct": true,
+                    "points": 5
+                }
+            ],
+            "partnerActualAnswer": [
+                "Started my first company",
+                "First time traveling alone",
+                "Met my best friend"
+            ],
+            "points": 10
+        },
+        "partner": {
+            "userId": "78dgd5ds64sd",
+            "guessedForPartner": [
+                {
+                    "guess": "Graduated from college",
+                    "matchedWith": "Finished university",
+                    "correct": true,
+                    "points": 5
+                },
+                {
+                    "guess": "First time abroad",
+                    "matchedWith": "First time traveling alone",
+                    "correct": true,
+                    "points": 5
+                },
+                {
+                    "guess": "Got married",
+                    "matchedWith": null,
+                    "correct": false,
+                    "points": 0
+                }
+            ],
+            "partnerActualAnswer": [
+                "Graduated from college",
+                "First time traveling alone",
+                "Met my best friend"
+            ],
+            "points": 10
         }
     }
 }

@@ -1,54 +1,76 @@
 {
     "question_options" :{
         "boxes" : [
-            "things I love",
-            "things I hate",
-            "things I don't care"
+            { "boxId" : 1, "name" : "things I love", "imId" : "sfsdfs", "url" : ".com/files" },
+            { "boxId" : 2, "name" : "things I hate", "imId" : "sdfdssf", "url" : ".com/files" },
+            { "boxId" : 3, "name" : "things I don't care"}
         ],
 
         "options" : [
-            { "txt": "go swiming", "imId" : "fgdfgf34dg", "url" : ".com/files"},
-            { "txt": "go hiking"},
-            { "txt": "sleeping", "imId" : "fg43fdgd",  "url" : ".com/files"},
-            { "txt": "eating"},
-            { "txt": "running"},
-            { "txt": "studying", "imId" : "dfgd4r53",  "url" : ".com/files"}
+            { "optId": 1, "txt": "go swiming", "imId" : "fgdfgf34dg", "url" : ".com/files"},
+            { "optId": 2,"txt": "go hiking"},
+            { "optId": 3,"txt": "sleeping", "imId" : "fg43fdgd",  "url" : ".com/files"},
+            { "optId": 4,"txt": "eating"},
+            { "optId": 5,"txt": "running"},
+            { "optId": 6,"txt": "studying", "imId" : "dfgd4r53",  "url" : ".com/files"}
         ]
     },
 
     "answer_format" : {
-        "answers" : [
-            {
-                "box" : "things I love",
-                "options" : [
-                    "go swiming",
-                    "sleeping"
-                ]
-            },
-            {
-                "box" : "things I hate",
-                "options" : [
-                    "running",
-                    "studying"
-                ]
-            },
-            {
-                "box" : "things I don't care",
-                "options" : [
-                    "eating"
-                ]
-            }
+        "ownAnswer" : [
+            {   "boxId" : 1, "optionsIds" : [1,3]   },
+            {   "boxId" : 2, "optionsIds" : [5,6]   },
+            {   "boxId" : 3, "optionsIds" : [4,2]   }
+        ],
+        "guessedPartner" : [
+            {   "boxId" : 1, "optionsIds" : [3, 4, 6, 1]    },
+            {   "boxId" : 2, "optionsIds" : [2] },
+            {   "boxId" : 3, "optionsIds" : [5] }
         ]
     },
 
     "review_format" : {
-        "yours" : [
-            {
-                
-            }
+        "boxes" : [
+            { "boxId" : 1, "name" : "things I love","url" : ".com/files" },
+            { "boxId" : 2, "name" : "things I hate","url" : ".com/files" },
+            { "boxId" : 3, "name" : "things I don't care"}
         ],
-        "partners" : {
 
+        "options" : [
+            { "optId": 1, "txt": "go swiming", "url" : ".com/files"},
+            { "optId": 2,"txt": "go hiking"},
+            { "optId": 3,"txt": "sleeping", "url" : ".com/files"},
+            { "optId": 4,"txt": "eating"},
+            { "optId": 5,"txt": "running"},
+            { "optId": 6,"txt": "studying", "url" : ".com/files"}
+        ],
+        "you" : {
+            "userId" : "54sdf5ds64sd",
+            "guessedForPartner" : [
+                {"boxId" : 1,"optionsIds" : [3, 4, 6, 1]},
+                {"boxId" : 2,"optionsIds" : [2]},
+                {"boxId" : 3,"optionsIds" : [5]}
+            ],
+            "actualPartnerAnswer" : [
+                {"boxId" : 1,"optionsIds" : [3, 6, 1]},
+                {"boxId" : 2,"optionsIds" : [2, 4]},
+                {"boxId" : 3,"optionsIds" : [5]}
+            ],
+            "points" : 8
+        },
+        "partner" : {
+            "userId" : "54sdf5ds64sd",
+            "guessedForPartner" : [
+                {"boxId" : 1,"optionsIds" : [1,2,3]},
+                {"boxId" : 2,"optionsIds" : [4,5]},
+                {"boxId" : 3,"optionsIds" : [6]}
+            ],
+            "actualPartnerAnswer" : [
+                {"boxId" : 1,"optionsIds" : [1,3]},
+                {"boxId" : 2,"optionsIds" : [5,6]},
+                {"boxId" : 3,"optionsIds" : [4,2]}
+            ],
+            "points" : 2
         }
     }
 }

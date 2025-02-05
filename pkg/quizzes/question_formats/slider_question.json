@@ -2,20 +2,21 @@
     "question_format": {},
 
     "answer_format" :{
-        "answer" : 72 
+        "ownAnswer" : 41,
+        "guessedPartner" : 69
     },
 
     "review_format": {
-        "yours" : {
-            "correctAnswer" : 76,
-            "answer" : 71,
-            "correct" : true,
+        "you" : {
+            "user_id" : "121sdf2s1",
+            "actualPartnerAnswer" : 72,
+            "guessedForPartner" : 69,
             "points" : 14
         },
-        "partners" : {
-            "correctAnswer" : 41,
-            "answer" : 14,
-            "correct": false,
+        "partner" : {
+            "user_id" : "121sdf2s1",
+            "actualPartnerAnswer" : 41,
+            "guessedForPartner" : 13,
             "points" : 0
         }
     }

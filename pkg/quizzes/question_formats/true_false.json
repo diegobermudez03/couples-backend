@@ -5,20 +5,21 @@
     },
 
     "answer_format" :{
-        "answer" : true
+        "ownAnswer" : false,
+        "guessedPartner" : false
     },
 
     "review_format" : {
-        "yours" : {
-            "correctAnswer" : true,
-            "answer" : false,
-            "correct" : false,
+        "you" : {
+            "user_id" : "1ss2ssdf21s",
+            "actualPartnerAnswer" : true,
+            "guessedForPartner" : false,
             "points" : 0
         },
-        "partners" : {
-            "correctAnswer" : false,
-            "answer" : false,
-            "correct" : true,
+        "partner" :{
+            "user_id" : "1ss2ssdf21s",
+            "actualPartnerAnswer" : false,
+            "guessedForPartner" : false,
             "points" : 15
         }
     }

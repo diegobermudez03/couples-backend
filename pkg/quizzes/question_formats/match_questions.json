@@ -1,30 +1,68 @@
 {
-    "options_left" : [
-        "sushi",
-        "burguer",
-        "pizza"
-    ],
-    "options_right" : [
-        "EEUU",
-        "Japan",
-        "Italy"
-    ]
-}
+    "question_options": {
+        "optionsLeft" : [
+            {"optId" : 1, "text" : "sushi", "imId" : "4dsf24", "url" : ".com/dfdf"},
+            {"optId" : 2, "text" : "burguer"},
+            {"optId" : 3, "text" : "pizza", "imId" : "4dsf24", "url" : ".com/dfdf"}
+        ],
+        "optionsRight" : [
+            {"optId" : 1, "text" : "EEUU", "imId" : "4dsf24", "url" : ".com/dfdf"},
+            {"optId" : 2, "text" : "Japan", "imId" : "4dsf24", "url" : ".com/dfdf"},
+            {"optId" : 3, "text" : "Italy"}
+        ]
+    },
 
+    "answer_format" :{
+        "ownAnswer" : [
+            {"leftId" : 1, "rightId" : 2},
+            {"leftId" : 3, "rightId" : 3},
+            {"leftId" : 2, "rightId" : 1}
+        ],
+        "guessedPartner" : [
+            {"leftId" : 1, "rightId" : 3},
+            {"leftId" : 2, "rightId" : 2},
+            {"leftId" : 3, "rightId" : 1}
+        ]
+    },
 
-{
-    "answers" : [
-        {
-            "option1" : "sushi",
-            "option2" : "japan"
+    "review_format" : {
+        "optionsLeft" : [
+            {"optId" : 1, "text" : "sushi", "url" : ".com/dfdf"},
+            {"optId" : 2, "text" : "burguer"},
+            {"optId" : 3, "text" : "pizza", "url" : ".com/dfdf"}
+        ],
+        "optionsRight" : [
+            {"optId" : 1, "text" : "EEUU", "url" : ".com/dfdf"},
+            {"optId" : 2, "text" : "Japan", "url" : ".com/dfdf"},
+            {"optId" : 3, "text" : "Italy"}
+        ],
+        "you" : {
+            "userId" : "54sdf5ds64sd",
+            "guessedForPartner" : [
+                {"leftId" : 1, "rightId" : 3},
+                {"leftId" : 2, "rightId" : 2},
+                {"leftId" : 3, "rightId" : 1}
+            ],
+            "actualPartnerAnswer" : [
+                {"leftId" : 1, "rightId" : 3},
+                {"leftId" : 2, "rightId" : 2},
+                {"leftId" : 3, "rightId" : 1}
+            ],
+            "points" : 15
         },
-        {
-            "option1" : "burguer",
-            "option2" : "EEUU"
-        },
-        {
-            "option1" : "pizza",
-            "option2" : "italy"
+        "partner" : {
+            "userId" : "54sdf5ds64sd",
+            "guessedForPartner" : [
+                {"leftId" : 1, "rightId" : 1},
+                {"leftId" : 2, "rightId" : 2},
+                {"leftId" : 3, "rightId" : 3}
+            ],
+           "actualPartnerAnswer" : [
+                {"leftId" : 1, "rightId" : 2},
+                {"leftId" : 3, "rightId" : 3},
+                {"leftId" : 2, "rightId" : 1}
+            ],
+            "points" : 5
         }
-    ]
+    }
 }

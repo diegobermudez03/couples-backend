@@ -1,14 +1,38 @@
 {
-    "options" : [
-        "option1",
-        "option2",
-        "option3"
-    ]
-}
+    "questionFormat" :{
+        "multipleAnswer" : true,
+        "options" : [
+            {"optId" : 1, "text" : "sssss", "imId" : "4sd54f54s", "url" : ".com/sdsd"},
+            {"optId" : 2, "text" : "sssss", "imId" : "4sd54f54s", "url" : ".com/sdsd"},
+            {"optId" : 3, "text" : "sssss"},
+            {"optId" : 4, "text" : "sssss", "imId" : "4sd54f54s", "url" : ".com/sdsd"}
+        ]
+    },
 
-{
-    "answers" : [
-        "option1",
-        "option2"
-    ]
+    "answerFormat" : {
+        "ownAnswer" : [1,3,4],
+        "guessedPartner" : [2,3]
+    },
+
+
+    "reviewFormat" :{
+        "options" : [
+            {"optId" : 1, "text" : "sssss", "url" : ".com/sdsd"},
+            {"optId" : 2, "text" : "sssss", "url" : ".com/sdsd"},
+            {"optId" : 3, "text" : "sssss"},
+            {"optId" : 4, "text" : "sssss", "url" : ".com/sdsd"}
+        ],
+        "you" : {
+            "userId" : "54sdf5ds64sd",
+            "guessedForPartner" : [2,3],
+            "actualPartnerAnswer" : [1,2],
+            "points" : 1
+        },
+        "partner" : {
+            "userId" : "54sdf5ds64sd",
+            "guessedForPartner" : [1,3],
+            "actualPartnerAnswer" : [1,3,4],
+            "points" : 8
+        }
+    }
 }
