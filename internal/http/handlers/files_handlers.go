@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"io"
 	"net/http"
 
@@ -33,7 +32,7 @@ func (h *FilesHandler) RegisterRoutes(r *chi.Mux){
 func (h *FilesHandler) getPublicImage(w http.ResponseWriter, r *http.Request){
 	path := chi.URLParam(r, "*")
 	if path == ""{
-		utils.WriteError(w, http.StatusBadRequest, errors.New("NO_PATH_GIVEN"))
+		utils.WriteError(w, http.StatusBadRequest, utils.ErrNoPathGiven)
 		return 
 	}
 	file, contentType, err := h.service.GetImage(r.Context(), path)
@@ -46,7 +45,7 @@ func (h *FilesHandler) getPublicImage(w http.ResponseWriter, r *http.Request){
 
 	_, err = io.Copy(w, file)
 	if err != nil{
-		utils.WriteError(w, http.StatusBadRequest, errors.New("UNABLE_TO_LOAD"))
+		utils.WriteError(w, http.StatusBadRequest, utils.ErrUnbaleToLoad)
 		return 
 	}
 }

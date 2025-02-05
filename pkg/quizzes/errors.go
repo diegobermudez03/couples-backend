@@ -15,4 +15,5 @@ var (
 	ErrInvalidLanguage = errors.New("INVALID_LANGUAGE")
 	ErrUpdatingQuiz = errors.New("UNABLE_TO_UPDATE_QUIZ")
 	ErrQuizNotFound = errors.New("QUIZ_NOT_FOUND")
+	ErrInvalidQuestionType = errors.New("INVALID_QUESTION_TYPE")
 )

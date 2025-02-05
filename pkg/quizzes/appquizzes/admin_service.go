@@ -144,7 +144,7 @@ func (s *AdminServiceImpl) CreateQuiz(ctx context.Context, name, description, la
 }
 
 
-func (s *AdminServiceImpl)  UpdateQuiz(ctx context.Context, quizId uuid.UUID, name, description string, categoryId *uuid.UUID, image io.Reader) error{
+func (s *AdminServiceImpl)  UpdateQuiz(ctx context.Context, quizId uuid.UUID, name, description, languageCode string, categoryId *uuid.UUID, image io.Reader) error{
 	quiz, err := s.quizzesRepo.GetQuizById(ctx, quizId)
 	if err != nil{
 		return quizzes.ErrUpdatingQuiz
@@ -171,6 +171,9 @@ func (s *AdminServiceImpl)  UpdateQuiz(ctx context.Context, quizId uuid.UUID, na
 	}
 	if description != ""{
 		quiz.Description = description
+	}
+	if languageCode != ""{
+		quiz.LanguageCode = languageCode
 	}
 	if categoryId != nil{
 		if cat, err := s.quizzesRepo.GetCategoryById(ctx, *categoryId); err == nil && cat != nil{

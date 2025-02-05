@@ -106,9 +106,9 @@ func (r *QuizzesPostgresRepo) CreateQuiz(ctx context.Context, quiz *quizzes.Quiz
 func (r *QuizzesPostgresRepo) UpdateQuiz(ctx context.Context, quiz *quizzes.QuizPlainModel) (int, error){
 	result, err := r.db.ExecContext(
 		ctx, 
-		`UPDATE quizzes SET name = $1, description = $2, category_id = $3, image_id = $4, active = $5, published = $6
-		WHERE id = $7`,
-		quiz.Name, quiz.Description, quiz.CategoryId, quiz.ImageId, quiz.Active, quiz.Published, quiz.Id,
+		`UPDATE quizzes SET name = $1, description = $2, category_id = $3, image_id = $4, active = $5, published = $6, language_code = $7
+		WHERE id = $8`,
+		quiz.Name, quiz.Description, quiz.CategoryId, quiz.ImageId, quiz.Active, quiz.Published, quiz.LanguageCode,quiz.Id,
 	)
 	if err != nil{
 		return 0, err 

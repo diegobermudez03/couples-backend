@@ -1,4 +1,14 @@
 {
+    "input_format": {
+        "sortingType" : "LEAST_TO_MOST",
+        "options" : [
+            {"name" : "option1", "imageName" : "holaa.png"},
+            {"randId" : 2},
+            {"randId" : 3, "imageName" : "holaa.png"}
+        ]
+    },
+
+
     "question_format": {
         "sortingType": "LEAST_TO_MOST",
         "options" : [

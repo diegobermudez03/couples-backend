@@ -1,4 +1,14 @@
 {
+    "input_format" : {
+        "multipleAnswer" : true,
+        "options" : [
+            {"randId": 1, "text": "sssss"},
+            {"randId": 2, "text": "sssss"},
+            {"randId": 3, "text": "sssss"},
+            {"randId": 4, "text": "sssss"}
+        ]
+    },
+    
     "questionFormat" :{
         "multipleAnswer" : true,
         "options" : [

@@ -1,4 +1,6 @@
- {
+ {  
+    "input_format" : {},
+    
     "question_format": {},
 
     "answer_format" :{

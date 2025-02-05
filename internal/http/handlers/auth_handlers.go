@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"math/rand/v2"
@@ -219,7 +218,7 @@ func (h *AuthHandler) createUserEndpoint(w http.ResponseWriter, r *http.Request)
 func (h *AuthHandler) checkExistanceEndpoint(w http.ResponseWriter, r *http.Request){
 	token := r.Header.Get("token")
 	if token == ""{
-		utils.WriteError(w, http.StatusBadRequest, errors.New("no token provided"))
+		utils.WriteError(w, http.StatusBadRequest, utils.ErrNoTokenProvided)
 		return 
 	}
 
@@ -240,7 +239,7 @@ func (h *AuthHandler) checkExistanceEndpoint(w http.ResponseWriter, r *http.Requ
 func (h *AuthHandler) userLogoutEndpoint(w http.ResponseWriter, r *http.Request){
 	token := r.Header.Get("token")
 	if token == ""{
-		utils.WriteError(w, http.StatusBadRequest, errors.New("no token provided"))
+		utils.WriteError(w, http.StatusBadRequest, utils.ErrNoTokenProvided)
 		return 
 	}
 
@@ -258,7 +257,7 @@ func (h *AuthHandler) userLogoutEndpoint(w http.ResponseWriter, r *http.Request)
 func (h *AuthHandler) getTempCoupleCodeEndpoint(w http.ResponseWriter, r *http.Request){
 	token := r.Header.Get("token")
 	if token == ""{
-		utils.WriteError(w, http.StatusBadRequest, errors.New("no token provided"))
+		utils.WriteError(w, http.StatusBadRequest, utils.ErrNoTokenProvided)
 		return 
 	}
 	tempCouple, err := h.authService.GetTempCoupleOfUser(r.Context(), token)
@@ -283,7 +282,7 @@ func (h *AuthHandler) getTempCoupleCodeEndpoint(w http.ResponseWriter, r *http.R
 func (h *AuthHandler) postTempCoupleCodeEndpoint(w http.ResponseWriter, r *http.Request){
 	token := r.Header.Get("token")
 	if token == ""{
-		utils.WriteError(w, http.StatusBadRequest, errors.New("no token provided"))
+		utils.WriteError(w, http.StatusBadRequest, utils.ErrNoTokenProvided)
 		return 
 	}
 	payload := struct{
@@ -315,7 +314,7 @@ func (h *AuthHandler) postTempCoupleCodeEndpoint(w http.ResponseWriter, r *http.
 func (h *AuthHandler) connectWithCoupleEndpoint(w http.ResponseWriter, r *http.Request){
 	token := r.Header.Get("token")
 	if token == ""{
-		utils.WriteError(w, http.StatusBadRequest, errors.New("no token provided"))
+		utils.WriteError(w, http.StatusBadRequest, utils.ErrNoTokenProvided)
 		return 
 	}
 
@@ -412,7 +411,7 @@ func (h *AuthHandler) logoutEndpoint(w http.ResponseWriter, r *http.Request){
 func (h *AuthHandler) suscribeTempCoupleNotifications(w http.ResponseWriter, r *http.Request){
 	token := r.Header.Get("token")
 	if token == ""{
-		utils.WriteError(w, http.StatusBadRequest, errors.New("no token provided"))
+		utils.WriteError(w, http.StatusBadRequest, utils.ErrNoTokenProvided)
 		return 
 	}
 	channel, userId, err := h.authService.SuscribeTempCoupleNot(r.Context(), token)
