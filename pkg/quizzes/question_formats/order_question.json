@@ -2,9 +2,9 @@
     "input_format": {
         "sortingType" : "LEAST_TO_MOST",
         "options" : [
-            {"name" : "option1", "imageName" : "holaa.png"},
-            {"randId" : 2},
-            {"randId" : 3, "imageName" : "holaa.png"}
+            {"text" : "option1", "imageName" : "holaa.png"},
+            {"text" : "option2"},
+            {"text" : "option3","imageName" : "holaa.png"}
         ]
     },
 
@@ -12,9 +12,9 @@
     "question_format": {
         "sortingType": "LEAST_TO_MOST",
         "options" : [
-            {"optId": 1, "name" :"option1", "imId" : "1sd4f4sd", "url" : ".com/dsds"},
-            {"optId": 2, "name" :"option2"},
-            {"optId": 3, "name" :"option3", "imId" : "1sd4f4sd", "url" : ".com/dsds"}
+            {"optId": 1, "text" :"option1", "imId" : "1sd4f4sd", "url" : ".com/dsds"},
+            {"optId": 2, "text" :"option2"},
+            {"optId": 3, "text" :"option3", "imId" : "1sd4f4sd", "url" : ".com/dsds"}
         ]
     },
 

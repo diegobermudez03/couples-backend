@@ -16,4 +16,6 @@ var (
 	ErrUpdatingQuiz = errors.New("UNABLE_TO_UPDATE_QUIZ")
 	ErrQuizNotFound = errors.New("QUIZ_NOT_FOUND")
 	ErrInvalidQuestionType = errors.New("INVALID_QUESTION_TYPE")
+	ErrCreatingQuestion = errors.New("UNABLE_TO_CREATE_QUESTION")
+	ErrInvalidQuestionOptions = errors.New("INVALID_QUESTION_OPTIONS")
 )

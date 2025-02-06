@@ -20,8 +20,6 @@ type CreateQuestionRequest struct{
 	Question 		string 
 	QType 			string 
 	OptionsJson		string 
-	ScoreValue 		*string
-	Timer 			*int 
 	StrategicAnswerId *uuid.UUID
 	StrategicName 		*string 
 	StrategicDescription *string 
@@ -40,6 +38,14 @@ type QuizzesRepository interface{
 	GetQuizById(ctx context.Context, id uuid.UUID) (*QuizPlainModel, error)
 	CreateQuiz(ctx context.Context, quiz *QuizPlainModel) (int, error)
 	UpdateQuiz(ctx context.Context, quiz *QuizPlainModel) (int, error)
+
+
+	GetQuestionsFromQuizId(ctx context.Context, quizId uuid.UUID) ([]QuestionPlainModel, error)
+	GetMaxOrderQuestionFromQuiz(ctx context.Context, quizId uuid.UUID) (int, error)
+	CreateQuestion(ctx context.Context, model *QuestionPlainModel) error
+
+	GetStrategicTypeAnswerById(ctx context.Context, id uuid.UUID) (*StrategicAnswerModel, error)
+	CreateStrategicTypeAnswer(ctx context.Context, model *StrategicAnswerModel) (int, error)
 
 }
 
@@ -60,3 +66,13 @@ const (
 	MATCHING_TYPE = "MATCHING"
 	DRAG_AND_DROP_TYPE = "DRAG_AND_DROP"
 )
+
+
+//PLACEHOLDERS IN QUESTION
+const YOU_PLACEHOLDER = "%y%"
+const PARTNER_PLACEHOLDER = "%r%"
+
+
+//sorting types
+const LEAST_TO_MOST = "L-M"
+const MOST_TO_LEAST = "M-L"

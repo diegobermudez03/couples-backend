@@ -2,9 +2,7 @@
 {
     "input_format" : {},
     
-    "question_options": {
-
-    },
+    "question_options": {},
 
     "answer_format" :{
         "ownAnswer" : false,

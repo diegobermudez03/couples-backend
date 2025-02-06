@@ -2,10 +2,10 @@
     "input_format" : {
         "multipleAnswer" : true,
         "options" : [
-            {"randId": 1, "text": "sssss"},
-            {"randId": 2, "text": "sssss"},
-            {"randId": 3, "text": "sssss"},
-            {"randId": 4, "text": "sssss"}
+            { "text": "sssss", "imageName" : "holaa.png"},
+            { "text": "sssss", "imageName" : "holaa.png"},
+            { "text": "sssss"},
+            { "text": "sssss", "imageName" : "holaa.png"}
         ]
     },
     

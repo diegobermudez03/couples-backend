@@ -37,3 +37,20 @@ type QuizPlainModel struct{
 	CategoryId 		uuid.UUID
 	CreatorId 		*uuid.UUID
 }
+
+type QuestionPlainModel struct{
+	Id 				uuid.UUID
+	Ordering 		int 
+	Question 		string 
+	QuestionType 	string 
+	OptionsJson  	string 
+	QuizId 			uuid.UUID
+	StrategicAnswerId 	*uuid.UUID
+}
+
+
+type StrategicAnswerModel struct{
+	Id 				uuid.UUID 
+	Name 			string 
+	Description 	string
+}

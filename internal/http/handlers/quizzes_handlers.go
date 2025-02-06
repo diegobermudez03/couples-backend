@@ -48,9 +48,7 @@ func (h *QuizzesHandler) RegisterRoutes(r *chi.Mux) {
 type postQuestionDTO struct{
 	Question 			string 		`json:"question" validate:"required"`
 	QuestionType		string 		`json:"questionType" validate:"required"`
-	ScoreValue			*string 	`json:"scoreValue"`
 	OptionsJson			string 		`json:"optionsJson" validate:"required"`
-	TimerSeconds 		*int 		`json:"timerSeconds"`
 	StrategicAnswerId 	*uuid.UUID	`json:"strategicAnswerId"`
 	StrategicName 		*string 	`json:"strategicName"`
 	StrategicDescription *string	`json:"strategicDescription"`
@@ -112,8 +110,6 @@ func (h *QuizzesHandler) postQuestionHandler(w http.ResponseWriter, r *http.Requ
 		quizzes.CreateQuestionRequest{
 			Question: payload.Question,
 			QType: payload.QuestionType,
-			ScoreValue: payload.ScoreValue,
-			Timer: payload.TimerSeconds,
 			StrategicAnswerId: payload.StrategicAnswerId,
 			StrategicName: payload.StrategicName,
 			StrategicDescription: payload.StrategicDescription,
