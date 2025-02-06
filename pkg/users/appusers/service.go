@@ -196,8 +196,8 @@ func (s *UsersServiceImpl) ConnectCouple(ctx context.Context, userId uuid.UUID, 
 
 	//delete temp couples
 	go func(){
-		s.usersRepo.DeleteTempCoupleById(ctx, heId)
-		s.usersRepo.DeleteTempCoupleById(ctx, sheId)
+		s.usersRepo.DeleteTempCoupleById(context.Background(), heId)
+		s.usersRepo.DeleteTempCoupleById(context.Background(), sheId)
 
 		//create first points
 		s.usersRepo.CreateCouplePoints(

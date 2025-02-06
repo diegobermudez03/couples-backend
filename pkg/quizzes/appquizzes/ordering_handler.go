@@ -45,9 +45,12 @@ func (s *UserService) orderingCreator(ctx context.Context, quiz *quizzes.QuizPla
 	//create base for or
 	var output orderingOptionsFormat
 	output.SortingType = input.SortingType
-	output.Options = make([]orderingOption, len(input.Options))
 
+
+	output.Options = make([]orderingOption, len(input.Options))
+	lock := sync.Mutex{}
 	waitGroup := sync.WaitGroup{}
+	
 
 	for _, inputOption := range input.Options{
 		option := orderingOption{}
@@ -58,17 +61,28 @@ func (s *UserService) orderingCreator(ctx context.Context, quiz *quizzes.QuizPla
 			go func(){
 				file, ok := images[inputOption.ImageName]
 				if ok{
-					fileId, err := s.fileService.UploadImage(ctx, file, files.MAX_SIZE_QUESTION_PICTURE, true, quizzes.DOMAIN_NAME, quizzes.QUIZZES, quiz.Id.String(), questionId.String(), inputOption.ImageName)
+					fileId, url, err := s.fileService.UploadImage(ctx, file, files.MAX_SIZE_QUESTION_PICTURE, true, s.getOptionImagePath(quiz.Id,questionId, inputOption.ImageName)...)
 					if err == nil{
 						option.ImageId = fileId
-						//add url
+						option.ImageUrl = url
 					}
 				}
+				lock.Lock()
+				output.Options = append(output.Options, option)
+				lock.Unlock()
+				waitGroup.Done()
 			}()
 		}else{
+			lock.Lock()
 			output.Options = append(output.Options, option)
+			lock.Unlock()
 		}
 	}
 	waitGroup.Wait()
-	return "", nil
+
+	jsonBytes, err := json.Marshal(output)
+	if err != nil{
+		return "", quizzes.ErrCreatingQuestion
+	}
+	return string(jsonBytes), nil
 }

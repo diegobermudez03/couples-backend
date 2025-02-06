@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/diegobermudez03/couples-backend/pkg/infraestructure"
 	"github.com/diegobermudez03/couples-backend/pkg/users"
 	"github.com/google/uuid"
 )
@@ -23,7 +24,8 @@ func NewUsersPostgresRepo(db *sql.DB) users.UsersRepo{
 }
 
 func (r *UsersPostgresRepo) CreateUser(ctx context.Context, user *users.UserModel) (int, error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx, 
 		`INSERT INTO users(id, first_name, last_name, gender, birth_date, created_at, active, country_code, language_code, nickname)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
@@ -38,7 +40,8 @@ func (r *UsersPostgresRepo) CreateUser(ctx context.Context, user *users.UserMode
 }
 
 func (r *UsersPostgresRepo) DeleteUserById(ctx context.Context, userId uuid.UUID) (int, error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx, 
 		`DELETE FROM users WHERE id = $1`,
 		userId,
@@ -86,7 +89,8 @@ func (r *UsersPostgresRepo) CheckTempCoupleById(ctx context.Context, userId uuid
 }
 
 func (r *UsersPostgresRepo) UpdateTempCouple(ctx context.Context, tempCouple *users.TempCoupleModel) (int, error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx,
 		`UPDATE temp_couples SET code = $1, start_date = $2, updated_at = $3 WHERE user_id = $4`,
 		tempCouple.Code, tempCouple.StartDate ,time.Now(), tempCouple.UserId,
@@ -100,7 +104,8 @@ func (r *UsersPostgresRepo) UpdateTempCouple(ctx context.Context, tempCouple *us
 }
 
 func (r *UsersPostgresRepo) CreateTempCouple(ctx context.Context, tempCouple *users.TempCoupleModel) (int, error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx,
 		`INSERT INTO temp_couples (user_id, code, start_date, updated_at, created_at) VALUES($1, $2, $3, $4, $5)`,
 		tempCouple.UserId, tempCouple.Code, tempCouple.StartDate ,time.Now(), time.Now(),
@@ -133,7 +138,8 @@ func (r *UsersPostgresRepo)  GetCoupleByUserId(ctx context.Context, userId uuid.
 }
 
 func (r *UsersPostgresRepo)  DeleteTempCoupleById(ctx context.Context, id uuid.UUID) (int, error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx, 
 		`DELETE FROM temp_couples WHERE user_id = $1`,
 		id,
@@ -147,7 +153,8 @@ func (r *UsersPostgresRepo)  DeleteTempCoupleById(ctx context.Context, id uuid.U
 }
 
 func (r *UsersPostgresRepo) CreateCouple(ctx context.Context, couple *users.CoupleModel) (int, error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx, 
 		`INSERT INTO couples(id, he_id, she_id, relation_start)
 		VALUES($1, $2, $3, $4)`,
@@ -162,7 +169,8 @@ func (r *UsersPostgresRepo) CreateCouple(ctx context.Context, couple *users.Coup
 }
 
 func (r *UsersPostgresRepo) CreateCouplePoints(ctx context.Context, points *users.PointsModel) (int, error) {
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx, 
 		`INSERT INTO points(id, points, day)
 		VALUES($1, $2, $3)`,
@@ -216,7 +224,8 @@ func (r *UsersPostgresRepo) GetCoupleById(ctx context.Context, coupleId uuid.UUI
 }
 
 func (r *UsersPostgresRepo) UpdateUserNicknameById(ctx context.Context, userId uuid.UUID, nickname string) (int, error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx,
 		`UPDATE users SET nickname = $1 WHERE id = $2`,
 		nickname, userId,

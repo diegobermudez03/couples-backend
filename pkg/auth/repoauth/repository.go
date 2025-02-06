@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/diegobermudez03/couples-backend/pkg/auth"
+	"github.com/diegobermudez03/couples-backend/pkg/infraestructure"
 	"github.com/google/uuid"
 )
 
@@ -22,7 +23,8 @@ func NewAuthPostgresRepo(db *sql.DB) auth.AuthRepository{
 }
 
 func (r *AuthPostgresRepo) CreateUserAuth(ctx context.Context, id uuid.UUID, email string, hash string) (int, error) {
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx,
 		`INSERT INTO users_auth(id, email, hash, created_at) 
 		VALUES ($1, $2, $3, $4)`,
@@ -37,7 +39,8 @@ func (r *AuthPostgresRepo) CreateUserAuth(ctx context.Context, id uuid.UUID, ema
 }
 
 func (r *AuthPostgresRepo) CreateSession(ctx context.Context,  sessionModel *auth.SessionModel) (int, error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx,
 		`INSERT INTO sessions(id, token, device, os, expires_at, created_at, last_used, user_auth_id)
 		VALUES($1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -93,7 +96,8 @@ func (r *AuthPostgresRepo) GetUserById(ctx context.Context, id uuid.UUID) (*auth
 }
 
 func (r *AuthPostgresRepo) CreateEmptyUser(ctx context.Context, id uuid.UUID, userId uuid.UUID) (int, error) {
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx, 
 		`INSERT INTO users_auth(id, user_id, created_at) VALUES($1, $2, $3)`,
 		id, userId, time.Now(),
@@ -107,7 +111,8 @@ func (r *AuthPostgresRepo) CreateEmptyUser(ctx context.Context, id uuid.UUID, us
 }
 
 func (r *AuthPostgresRepo) UpdateAuthUserId(ctx context.Context, authId uuid.UUID, userId uuid.UUID) (int, error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx, 
 		`UPDATE users_auth SET user_id = $1 WHERE id = $2`,
 		userId, authId,
@@ -121,7 +126,8 @@ func (r *AuthPostgresRepo) UpdateAuthUserId(ctx context.Context, authId uuid.UUI
 }
 
 func (r *AuthPostgresRepo) DeleteSessionById(ctx context.Context, sessionId uuid.UUID) (int, error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx, 
 		`DELETE FROM sessions WHERE id = $1`, 
 		sessionId,
@@ -135,7 +141,8 @@ func (r *AuthPostgresRepo) DeleteSessionById(ctx context.Context, sessionId uuid
 }
 
 func (r *AuthPostgresRepo) DeleteUserAuthById(ctx context.Context, authId uuid.UUID) (int, error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx, 
 		`DELETE FROM users_auth WHERE id = $1`, 
 		authId,
@@ -149,7 +156,8 @@ func (r *AuthPostgresRepo) DeleteUserAuthById(ctx context.Context, authId uuid.U
 }
 
 func (r *AuthPostgresRepo) UpdateAuthUserById(ctx context.Context, authId uuid.UUID, authModel *auth.UserAuthModel) (int, error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx,
 		`UPDATE users_auth SET email = $1, hash = $2, oauth_provider = $3, oauth_id = $4
 		WHERE id = $5`,
@@ -183,7 +191,8 @@ func (r *AuthPostgresRepo) GetSessionById(ctx context.Context, id uuid.UUID) (*a
 }
 
 func (r *AuthPostgresRepo)  UpdateSessionLastUsed(ctx context.Context, sessionId uuid.UUID, lastTime time.Time) (int, error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx,
 		`UPDATE sessions SET last_used = $1 WHERE id = $2`,
 		lastTime, sessionId,
@@ -229,5 +238,4 @@ func (r *AuthPostgresRepo) readUser(row *sql.Row) (*auth.UserAuthModel, error){
 	}
 	return model, nil
 }
-	
 	

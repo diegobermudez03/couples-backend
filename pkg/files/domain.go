@@ -9,7 +9,7 @@ import (
 )
 
 type Service interface {
-	UploadImage(ctx context.Context, image io.Reader, maxSize int64, public bool, path ...string) (*uuid.UUID,error)
+	UploadImage(ctx context.Context, image io.Reader, maxSize int64, public bool, path ...string) (imId *uuid.UUID, url *string, err error)
 	UpdateImage(ctx context.Context, image io.Reader, maxSize int64, id uuid.UUID) (error)
 	GetImage(ctx context.Context, path string) (*os.File, string, error)
 	//DeleteImage(ctx context.Context, imageId uuid.UUID) error

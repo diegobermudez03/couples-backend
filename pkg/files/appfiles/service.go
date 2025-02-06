@@ -32,20 +32,20 @@ func NewFilesServiceImpl(filesRepo files.FileRepository, dbRepo files.Repository
 }
 
 
-func (s *FilesServiceImpl) UploadImage(ctx context.Context, imageReader io.Reader,  maxSize int64, public bool, path ...string) (*uuid.UUID,error){
+func (s *FilesServiceImpl) UploadImage(ctx context.Context, imageReader io.Reader,  maxSize int64, public bool, path ...string) (*uuid.UUID, *string, error){
 	if len(path) < 3{
-		return nil, files.ErrPathNotLongEnough
+		return nil,nil, files.ErrPathNotLongEnough
 	}
 
 	buffer, err := s.compressToJPG(imageReader, int(maxSize))
 	if err != nil{
-		return nil, err
+		return nil,nil, err
 	}
 
 	var url *string 
 	if public{
-		tempUrl :=  s.baseURL + "/files/images/" + filepath.Join(path...) + ".jpg"
-		url = &tempUrl
+		url = new(string)
+		*url =  s.baseURL + "/files/images/" + filepath.Join(path...) + ".jpg"
 	}
 
 	// store image 
@@ -54,7 +54,7 @@ func (s *FilesServiceImpl) UploadImage(ctx context.Context, imageReader io.Reade
 	path = path[1:len(path)-1]
 	group := filepath.Join(path...)
 	if err := s.filesRepo.StoreFile(ctx, bucket, group, object, buffer); err != nil{
-		return nil, err
+		return nil, nil, err
 	}
 
 	// add to database
@@ -69,9 +69,9 @@ func (s *FilesServiceImpl) UploadImage(ctx context.Context, imageReader io.Reade
 		Type : files.JPG_TYPE,
 	}
 	if num, err := s.dbRepo.CreateFile(ctx, &model); err != nil || num == 0{
-		return nil, files.ErrUploadingImage
+		return nil, nil, files.ErrUploadingImage
 	}
-	return &id, nil
+	return &id, url, nil
 }
 
 

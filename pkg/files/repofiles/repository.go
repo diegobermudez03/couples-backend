@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/diegobermudez03/couples-backend/pkg/files"
+	"github.com/diegobermudez03/couples-backend/pkg/infraestructure"
 	"github.com/google/uuid"
 )
 
@@ -21,7 +22,8 @@ func NewFilesPostgresRepo(db *sql.DB) files.Repository{
 
 
 func (r *FilesPostgresRepo) CreateFile(ctx context.Context, file *files.FileModel) (int,error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx, 
 		`INSERT INTO files(id, bucket, grouping, object_key, url, public, type)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)`,

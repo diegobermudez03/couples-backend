@@ -67,7 +67,7 @@ func(s *AuthServiceImpl) RegisterUserAuth(ctx context.Context, email, password, 
 	hashString := string(hashBytes)
 
 	var userId uuid.UUID
-	log.Print(token)
+	
 	// check token 
 	if token != ""{
 		session, _ := s.authRepo.GetSessionByToken(ctx, token)
@@ -135,7 +135,7 @@ func (s *AuthServiceImpl) CloseUsersSession(ctx context.Context, token string) e
 	} 
 	authUser, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
 	if err != nil || authUser == nil{
-		return auth.ErrorWithLogout
+		return nil
 	} 
 	//if it's an anonymous account then delete both the account and the user
 	if s.checkIfAnonymousAuth(authUser){
@@ -177,9 +177,9 @@ func (s *AuthServiceImpl) CreateUser(ctx context.Context, token, firstName, last
 				if errors.Is(err, users.ErrorNoCoupleFound){
 					//at this point, if there was an anoynmous account, and it had no couple, then we delete it
 					go func (){ 
-						s.usersService.DeleteUserById(ctx, *userAuth.UserId) 
-						s.authRepo.DeleteSessionById(ctx, session.Id)
-						s.usersService.DeleteUserById(ctx, userAuth.Id)
+						s.usersService.DeleteUserById(context.Background(), *userAuth.UserId) 
+						s.authRepo.DeleteSessionById(context.Background(), session.Id)
+						s.usersService.DeleteUserById(context.Background(), userAuth.Id)
 					}()
 				}else{
 					return "", auth.ErrorUserForAccountAlreadyExists

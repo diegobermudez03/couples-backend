@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type QuestionOptionsCreator func(ctx context.Context, quiz *quizzes.QuizPlainModel, inputOptions string, images map[string]io.Reader) (string, error)
+type QuestionOptionsCreator func(ctx context.Context, quiz *quizzes.QuizPlainModel, inputOptions string, images map[string]io.Reader, questionId uuid.UUID) (string, error)
 
 type UserService struct{
 	fileService	files.Service
@@ -46,14 +46,15 @@ func (s *UserService) CreateQuestion(ctx context.Context, quizId uuid.UUID, para
 	if !ok{
 		return quizzes.ErrInvalidQuestionType
 	}
-	optionsJson, err := creator(ctx, quiz, parameters.OptionsJson, images)
+	questionId := uuid.New()
+	optionsJson, err := creator(ctx, quiz, parameters.OptionsJson, images, questionId)
 	if err != nil{
 		return err
 	}
 
 	// create model to store
 	questionModel := quizzes.QuestionPlainModel{
-		Id: uuid.New(),
+		Id:questionId,
 		OptionsJson: optionsJson,
 		QuestionType: parameters.QType,
 	}
@@ -97,19 +98,22 @@ func (s *UserService) CreateQuestion(ctx context.Context, quizId uuid.UUID, para
 //////////////////////////////////////////////////////////////////////////////////////////////////
 ///				PRIVATE METHODS				/////
 
+func (s *UserService) getOptionImagePath(quizId uuid.UUID, questionId uuid.UUID, imageName string) []string{
+	return []string{quizzes.DOMAIN_NAME, quizzes.QUIZZES, quizId.String(), questionId.String(), imageName}
+}
 
-func (s *UserService) openCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader) (string, error){
+func (s *UserService) openCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error){
 	return "", nil
 }
 
-func (s *UserService) multipleChCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader) (string, error){
+func (s *UserService) multipleChCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error){
 	return "", nil
 }
 
-func (s *UserService) matchingCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader) (string, error){
+func (s *UserService) matchingCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error){
 	return "", nil
 }
 
-func (s *UserService) dragAndDropCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader) (string, error){
+func (s *UserService) dragAndDropCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error){
 	return "", nil
 }

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/diegobermudez03/couples-backend/pkg/infraestructure"
 	"github.com/diegobermudez03/couples-backend/pkg/quizzes"
 	"github.com/google/uuid"
 )
@@ -42,7 +43,8 @@ func (r *QuizzesPostgresRepo) GetCategoryById(ctx context.Context, id uuid.UUID)
 
 
 func (r *QuizzesPostgresRepo) CreateCategory(ctx context.Context, category *quizzes.QuizCatPlainModel) (int, error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx, 
 		`INSERT INTO quiz_categories(id, name, description, created_at, image_id, active)
 		VALUES($1, $2, $3, $4, $5, $6)`,
@@ -57,7 +59,8 @@ func (r *QuizzesPostgresRepo) CreateCategory(ctx context.Context, category *quiz
 
 
 func (r *QuizzesPostgresRepo) UpdateCategory(ctx context.Context, category *quizzes.QuizCatPlainModel) (int, error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx, 
 		`UPDATE quiz_categories SET name = $1, description = $2 WHERE id = $3`,
 		category.Name, category.Description, category.Id,
@@ -87,7 +90,8 @@ func (r *QuizzesPostgresRepo) GetQuizById(ctx context.Context, id uuid.UUID) (*q
 }
 
 func (r *QuizzesPostgresRepo) CreateQuiz(ctx context.Context, quiz *quizzes.QuizPlainModel) (int, error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx,
 		`INSERT INTO quizzes(id, name, description, language_code, image_id, published, active, created_at, category_id, creator_id)
 		VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
@@ -104,7 +108,8 @@ func (r *QuizzesPostgresRepo) CreateQuiz(ctx context.Context, quiz *quizzes.Quiz
 
 
 func (r *QuizzesPostgresRepo) UpdateQuiz(ctx context.Context, quiz *quizzes.QuizPlainModel) (int, error){
-	result, err := r.db.ExecContext(
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
 		ctx, 
 		`UPDATE quizzes SET name = $1, description = $2, category_id = $3, image_id = $4, active = $5, published = $6, language_code = $7
 		WHERE id = $8`,
