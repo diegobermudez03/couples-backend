@@ -34,7 +34,7 @@ type QuizPlainModel struct{
 	Published 		bool 
 	Active 			bool 
 	CreatedAt 		time.Time
-	CategoryId 		uuid.UUID
+	CategoryId 		*uuid.UUID
 	CreatorId 		*uuid.UUID
 }
 

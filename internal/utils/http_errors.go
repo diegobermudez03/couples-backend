@@ -10,5 +10,5 @@ var (
 	ErrMissingFields = errors.New("MISSING_FIELDS")
 	ErrInvalidId = errors.New("INVALID_ID")
 	ErrEmptyCategoryId = errors.New("EMPTY_CATEGORY_ID")
-	ErrEmptuQuizId = errors.New("EMPTY_QUIZ_ID")
+	ErrEmptyQuizId = errors.New("EMPTY_QUIZ_ID")
 )

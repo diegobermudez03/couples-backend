@@ -17,5 +17,6 @@ var (
 	ErrQuizNotFound = errors.New("QUIZ_NOT_FOUND")
 	ErrInvalidQuestionType = errors.New("INVALID_QUESTION_TYPE")
 	ErrCreatingQuestion = errors.New("UNABLE_TO_CREATE_QUESTION")
+	ErrRetrievingQuiz = errors.New("UNABLE_TO_GET_QUIZ")
 	ErrInvalidQuestionOptions = errors.New("INVALID_QUESTION_OPTIONS")
 )

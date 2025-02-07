@@ -10,8 +10,6 @@ import (
 type AdminService interface {
 	CreateQuizCategory(ctx context.Context, name, description string, image io.Reader) error
 	UpdateQuizCategory(ctx context.Context, id uuid.UUID, name, description string, image io.Reader) error
-	CreateQuiz(ctx context.Context, name, description, languageCode string, categoryId uuid.UUID, image io.Reader) error
-	UpdateQuiz(ctx context.Context, quizId uuid.UUID, name, description, languageCode string, categoryId *uuid.UUID, image io.Reader) error
 	//DeleteQuizCategory(ctx context.Context, id uuid.UUID) error
 }
 
@@ -26,7 +24,10 @@ type CreateQuestionRequest struct{
 }
 
 type UserService interface{
-	CreateQuestion(ctx context.Context, userId *uuid.UUID, quizId uuid.UUID, parameters CreateQuestionRequest, images map[string]io.Reader) error
+	CreateQuiz(ctx context.Context, name, description, languageCode string, categoryId, userId *uuid.UUID, image io.Reader) error
+	UpdateQuiz(ctx context.Context, quizId uuid.UUID, name, description, languageCode string, categoryId *uuid.UUID, image io.Reader) error
+	CreateQuestion(ctx context.Context, quizId uuid.UUID, parameters CreateQuestionRequest, images map[string]io.Reader) error
+	GetQuizById(ctx context.Context, quizId uuid.UUID)(*QuizPlainModel, error)
 }
 
 type QuizzesRepository interface{

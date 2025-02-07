@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS quizzes(
     image_id        UUID REFERENCES files(id),
     created_at      TIMESTAMP NOT NULL,
     creator_id      UUID REFERENCES users(id),
-    category_id     UUID REFERENCES quiz_categories(id) NOT NULL
+    category_id     UUID REFERENCES quiz_categories(id)
 );
 
 CREATE TABLE IF NOT EXISTS quiz_questions(

@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+	"time"
 
 	"github.com/diegobermudez03/couples-backend/pkg/files"
+	"github.com/diegobermudez03/couples-backend/pkg/localization"
 	"github.com/diegobermudez03/couples-backend/pkg/quizzes"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -16,14 +18,19 @@ type QuestionOptionsCreator func(ctx context.Context, quiz *quizzes.QuizPlainMod
 
 type UserService struct{
 	fileService		files.Service
+	loacalizationService localization.LocalizationService
 	repo 			quizzes.QuizzesRepository
 	creators 		map[string]QuestionOptionsCreator
 	jsonValidator 	*validator.Validate
 }
 
-func NewUserService(fileService	files.Service, repo quizzes.QuizzesRepository) quizzes.UserService{
+func NewUserService(
+	fileService	files.Service, 
+	loacalizationService localization.LocalizationService, 
+	repo quizzes.QuizzesRepository) quizzes.UserService{
 	service := &UserService{
 		fileService: fileService,
+		loacalizationService: loacalizationService,
 		repo: repo,
 		jsonValidator: validator.New(),
 	}
@@ -39,8 +46,103 @@ func NewUserService(fileService	files.Service, repo quizzes.QuizzesRepository) q
 	return service
 }
 
+func (s *UserService) GetQuizById(ctx context.Context, quizId uuid.UUID)(*quizzes.QuizPlainModel, error){
+	quiz, err := s.repo.GetQuizById(ctx, quizId)
+	if err != nil{
+		return nil, quizzes.ErrRetrievingQuiz
+	}else if quiz == nil{
+		return nil, quizzes.ErrQuizNotFound
+	}
+	return quiz, nil
+}
 
-func (s *UserService) CreateQuestion(ctx context.Context, userId *uuid.UUID, quizId uuid.UUID, parameters quizzes.CreateQuestionRequest, images map[string]io.Reader) error{
+func (s *UserService) CreateQuiz(ctx context.Context, name, description, languageCode string, categoryId, userId *uuid.UUID, image io.Reader) error{
+	if name == ""{
+		return quizzes.ErrEmptyQuizName
+	}
+	if err := s.loacalizationService.ValidateLanguage(languageCode); err != nil{
+		return quizzes.ErrInvalidLanguage
+	}
+	if categoryId != nil{
+		cat, err := s.repo.GetCategoryById(ctx, *categoryId)
+		if err != nil{
+			return quizzes.ErrCreatingQuiz
+		} else if cat == nil{
+			categoryId = nil
+		}
+	}
+
+	quizId := uuid.New()
+	var imageId *uuid.UUID
+	if image != nil{
+		imageId, _, _ = s.fileService.UploadImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, true, quizzes.DOMAIN_NAME, quizzes.QUIZZES, quizId.String(), quizzes.PROFILE)
+	}
+
+	model := quizzes.QuizPlainModel{
+		Id: quizId,
+		Name: name,
+		Description: description,
+		LanguageCode: languageCode,
+		ImageId: imageId,
+		Published: false,
+		Active: true,
+		CreatedAt: time.Now(),
+		CategoryId: categoryId,
+		CreatorId: userId,
+	}
+
+	if num, err := s.repo.CreateQuiz(ctx, &model); err != nil || num == 0{
+		log.Print(err.Error())
+		return quizzes.ErrCreatingQuiz
+	}
+	return nil
+}
+
+
+func (s *UserService)  UpdateQuiz(ctx context.Context, quizId uuid.UUID, name, description, languageCode string, categoryId *uuid.UUID, image io.Reader) error{
+	quiz, err := s.repo.GetQuizById(ctx, quizId)
+	if err != nil{
+		return quizzes.ErrUpdatingQuiz
+	}else if quiz == nil{
+		return quizzes.ErrQuizNotFound
+	}
+
+	//if we are updating the image
+	if image != nil{
+		//if there was already an image
+		if quiz.ImageId != nil{
+			s.fileService.UpdateImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, *quiz.ImageId)
+		} else{
+			//if its a new image
+			id, _, err := s.fileService.UploadImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, true, quizzes.DOMAIN_NAME, quizzes.QUIZZES, quiz.Id.String(), quizzes.PROFILE)
+			if err == nil{
+				quiz.ImageId = id
+			}
+		}
+	}
+
+	if name != ""{
+		quiz.Name = name
+	}
+	if description != ""{
+		quiz.Description = description
+	}
+	if languageCode != ""{
+		quiz.LanguageCode = languageCode
+	}
+	if categoryId != nil{
+		if cat, err := s.repo.GetCategoryById(ctx, *categoryId); err == nil && cat != nil{
+			quiz.CategoryId = categoryId
+		} 
+	}
+
+	if num, err := s.repo.UpdateQuiz(ctx, quiz); num == 0 || err != nil{
+		return quizzes.ErrUpdatingQuiz
+	}
+	return nil 
+}
+
+func (s *UserService) CreateQuestion(ctx context.Context, quizId uuid.UUID, parameters quizzes.CreateQuestionRequest, images map[string]io.Reader) error{
 	quiz, err := s.repo.GetQuizById(ctx, quizId)
 	if err != nil || quiz  == nil{
 		return quizzes.ErrQuizNotFound

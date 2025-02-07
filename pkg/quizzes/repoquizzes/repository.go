@@ -171,7 +171,7 @@ func (r *QuizzesPostgresRepo) GetStrategicTypeAnswerById(ctx context.Context, id
 	row := r.db.QueryRowContext(
 		ctx,
 		`SELECT id, name, description
-		WHERE id = $1`,
+		FROM strategic_type_answers WHERE id = $1`,
 		id,
 	)
 	model := new(quizzes.StrategicAnswerModel)
