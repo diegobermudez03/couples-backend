@@ -122,6 +122,64 @@ func (r *QuizzesPostgresRepo) UpdateQuiz(ctx context.Context, quiz *quizzes.Quiz
 	return int(num), nil
 }
 
+func (r *QuizzesPostgresRepo) CreateQuestion(ctx context.Context, model *quizzes.QuestionPlainModel) (int, error){
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
+		ctx, 
+		`INSERT INTO quiz_questions(id, ordering, question, question_type, options_json, quiz_id, strategic_answer_id)
+		VALUES($1, $2, $3, $4, $5, $6, $7)`,
+		model.Id, model.Ordering, model.Question, model.QuestionType, model.OptionsJson, model.QuizId, model.StrategicAnswerId,
+	)
+	if err != nil{
+		return 0, err 
+	}
+	num, _ := result.RowsAffected()
+	return int(num), nil
+}
+
+func (r *QuizzesPostgresRepo) CreateStrategicTypeAnswer(ctx context.Context, model *quizzes.StrategicAnswerModel) (int, error){
+	executor := infraestructure.GetDBContext(ctx, r.db)
+	result, err := executor.ExecContext(
+		ctx, 
+		`INSERT INTO strategic_type_answers(id, name, description)
+		VALUES($1, $2, $3)`,
+		model.Id, model.Name, model.Description,
+	)
+	if err != nil{
+		return 0, err 
+	}
+	num, _ := result.RowsAffected()
+	return int(num), nil
+}
+
+func (r *QuizzesPostgresRepo) GetMaxOrderQuestionFromQuiz(ctx context.Context, quizId uuid.UUID) (int, error){
+	row := r.db.QueryRowContext(
+		ctx, 
+		`SELECT COALESCE(max(ordering), 0)
+		FROM quiz_questions WHERE quiz_id = $1`,
+		quizId,
+	)
+	var num int 
+	if err := row.Scan(&num); err != nil{
+		return 0, err  
+	}
+	return num, nil
+}
+
+
+func (r *QuizzesPostgresRepo) GetStrategicTypeAnswerById(ctx context.Context, id uuid.UUID) (*quizzes.StrategicAnswerModel, error){
+	row := r.db.QueryRowContext(
+		ctx,
+		`SELECT id, name, description
+		WHERE id = $1`,
+		id,
+	)
+	model := new(quizzes.StrategicAnswerModel)
+	if err := row.Scan(&model.Id, &model.Name, &model.Description); err != nil{
+		return nil, err 
+	}
+	return model, nil
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////

@@ -2,25 +2,30 @@ package appquizzes
 
 import (
 	"context"
+	"encoding/json"
 	"io"
+	"log"
 
 	"github.com/diegobermudez03/couples-backend/pkg/files"
 	"github.com/diegobermudez03/couples-backend/pkg/quizzes"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 )
 
 type QuestionOptionsCreator func(ctx context.Context, quiz *quizzes.QuizPlainModel, inputOptions string, images map[string]io.Reader, questionId uuid.UUID) (string, error)
 
 type UserService struct{
-	fileService	files.Service
-	repo 	quizzes.QuizzesRepository
-	creators map[string]QuestionOptionsCreator
+	fileService		files.Service
+	repo 			quizzes.QuizzesRepository
+	creators 		map[string]QuestionOptionsCreator
+	jsonValidator 	*validator.Validate
 }
 
 func NewUserService(fileService	files.Service, repo quizzes.QuizzesRepository) quizzes.UserService{
 	service := &UserService{
 		fileService: fileService,
 		repo: repo,
+		jsonValidator: validator.New(),
 	}
 	service.creators = map[string]QuestionOptionsCreator{
 		quizzes.TRUE_FALSE_TYPE : service.trueFalseCreator,
@@ -35,7 +40,7 @@ func NewUserService(fileService	files.Service, repo quizzes.QuizzesRepository) q
 }
 
 
-func (s *UserService) CreateQuestion(ctx context.Context, quizId uuid.UUID, parameters quizzes.CreateQuestionRequest, images map[string]io.Reader) error{
+func (s *UserService) CreateQuestion(ctx context.Context, userId *uuid.UUID, quizId uuid.UUID, parameters quizzes.CreateQuestionRequest, images map[string]io.Reader) error{
 	quiz, err := s.repo.GetQuizById(ctx, quizId)
 	if err != nil || quiz  == nil{
 		return quizzes.ErrQuizNotFound
@@ -47,7 +52,11 @@ func (s *UserService) CreateQuestion(ctx context.Context, quizId uuid.UUID, para
 		return quizzes.ErrInvalidQuestionType
 	}
 	questionId := uuid.New()
-	optionsJson, err := creator(ctx, quiz, parameters.OptionsJson, images, questionId)
+	inputOptionsJson, err := json.Marshal(parameters.OptionsJson)
+	if err != nil{
+		return quizzes.ErrInvalidQuestionOptions
+	}
+	optionsJson, err := creator(ctx, quiz, string(inputOptionsJson), images, questionId)
 	if err != nil{
 		return err
 	}
@@ -56,7 +65,9 @@ func (s *UserService) CreateQuestion(ctx context.Context, quizId uuid.UUID, para
 	questionModel := quizzes.QuestionPlainModel{
 		Id:questionId,
 		OptionsJson: optionsJson,
+		Question: parameters.Question,
 		QuestionType: parameters.QType,
+		QuizId: quizId,
 	}
 
 	//create strategic question if needed
@@ -79,12 +90,14 @@ func (s *UserService) CreateQuestion(ctx context.Context, quizId uuid.UUID, para
 	//calculate ordering 
 	maxOrder, err := s.repo.GetMaxOrderQuestionFromQuiz(ctx, quizId)
 	if err != nil{
+		log.Print(err.Error())
 		return quizzes.ErrCreatingQuestion
 	}
 	questionModel.Ordering = maxOrder + 1 
 
 	//write question
-	if err := s.repo.CreateQuestion(ctx, &questionModel); err != nil{
+	if num, err := s.repo.CreateQuestion(ctx, &questionModel); err != nil || num == 0{
+		log.Print(err.Error())
 		return quizzes.ErrCreatingQuestion
 	}
 	return nil
@@ -102,18 +115,13 @@ func (s *UserService) getOptionImagePath(quizId uuid.UUID, questionId uuid.UUID,
 	return []string{quizzes.DOMAIN_NAME, quizzes.QUIZZES, quizId.String(), questionId.String(), imageName}
 }
 
-func (s *UserService) openCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error){
-	return "", nil
-}
 
-func (s *UserService) multipleChCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error){
-	return "", nil
-}
-
-func (s *UserService) matchingCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error){
-	return "", nil
-}
-
-func (s *UserService) dragAndDropCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error){
-	return "", nil
+func (s *UserService) readJson(jsonText string, payload any) error{
+	if err := json.Unmarshal([]byte(jsonText), &payload); err != nil{
+		return err
+	}
+	if err := s.jsonValidator.Struct(payload); err != nil{
+		return err 
+	}
+	return nil
 }

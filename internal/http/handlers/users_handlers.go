@@ -70,8 +70,8 @@ var usersErrorCodes = map[error] int{
 
 ////// HANDLERS
 func (h *UsersHandler) PatchPartnersNickNameEndpoint(w http.ResponseWriter, r *http.Request){
-	userId := r.Context().Value(middlewares.UserIdKey).(uuid.UUID)
-	coupleId := r.Context().Value(middlewares.CoupleIdKey).(uuid.UUID)
+	userId := r.Context().Value(middlewares.UserIdKey{}).(uuid.UUID)
+	coupleId := r.Context().Value(middlewares.CoupleIdKey{}).(uuid.UUID)
 
 	payload := patchNicknameDTO{}
 	if err := utils.ReadJSON(r, &payload); err != nil{
@@ -80,11 +80,8 @@ func (h *UsersHandler) PatchPartnersNickNameEndpoint(w http.ResponseWriter, r *h
 	}
 
 	if err := h.service.EditPartnersNickname(r.Context(), userId, coupleId, payload.Nickname); err != nil{
-		errorCode, ok := usersErrorCodes[err]
-		if !ok{
-			errorCode = 500
-		}
-		utils.WriteError(w, errorCode, err)
+		code := utils.GetErrorCode(err, authErrorCodes, 500)
+		utils.WriteError(w, code, err)
 		return 
 	}
 

@@ -1,4 +1,21 @@
 {
+    "input_format" : {
+        "boxes" : [
+            { "name" : "things I love", "imageName" : "sfsdfs" },
+            { "name" : "things I hate", "imageName" : "sdfdssf" },
+            { "name" : "things I don't care"}
+        ],
+
+        "options" : [
+            {   "txt": "go swiming", "imageName" : "fgdfgf34dg"},
+            {   "txt": "go hiking"},
+            {   "txt": "sleeping", "imageName" : "fg43fdgd"},
+            {   "txt": "eating"},
+            {   "txt": "running"},
+            {   "txt": "studying", "imageName" : "dfgd4r53"}
+        ]
+    },
+    
     "question_options" :{
         "boxes" : [
             { "boxId" : 1, "name" : "things I love", "imId" : "sfsdfs", "url" : ".com/files" },

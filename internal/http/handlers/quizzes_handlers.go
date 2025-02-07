@@ -18,22 +18,34 @@ const QUIZ_ID_URL_PARAM = "quizId"
 type QuizzesHandler struct {
 	service     quizzes.UserService
 	middlewares *middlewares.Middlewares
+	adminService quizzes.AdminService
 }
 
-func NewQuizzesHandler(service quizzes.UserService, middlewares *middlewares.Middlewares) *QuizzesHandler {
+func NewQuizzesHandler(adminService quizzes.AdminService, service quizzes.UserService, middlewares *middlewares.Middlewares) *QuizzesHandler {
 	return &QuizzesHandler{
+		adminService: adminService,
 		service:     service,
 		middlewares: middlewares,
 	}
 }
 
 func (h *QuizzesHandler) RegisterRoutes(r *chi.Mux) {
-	router := chi.NewMux()
-	router.Use(h.middlewares.CheckAccessToken)
+	routerUsers := chi.NewMux()
+	routerUsers.Use(h.middlewares.CheckAccessToken)
+	routerAdmin := chi.NewMux()
+	routerAdmin.Use(h.middlewares.CheckAdminAccessToken)
 
-	r.Mount("/quizzes", router)
+	r.Mount("/quizzes", routerUsers)
 
-	router.Post(fmt.Sprintf("/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
+	routerUsers.Post(fmt.Sprintf("/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
+
+	r.Mount("/admin/quizzes", routerAdmin)
+
+	routerAdmin.Post("/categories", h.postAdminQuizCategory)
+	routerAdmin.Patch(fmt.Sprintf("/categories/{%s}", CAT_ID_URL_PARAM), h.patchAdminQuizCategory)
+	routerAdmin.Post(fmt.Sprintf("/categories/{%s}/quizzes", CAT_ID_URL_PARAM), h.postAdminQuiz)
+	routerAdmin.Patch(fmt.Sprintf("/{%s}", QUIZ_ID_URL_PARAM), h.patchAdminQuiz)
+	routerAdmin.Post(fmt.Sprintf("/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
 }
 
 
@@ -48,11 +60,35 @@ func (h *QuizzesHandler) RegisterRoutes(r *chi.Mux) {
 type postQuestionDTO struct{
 	Question 			string 		`json:"question" validate:"required"`
 	QuestionType		string 		`json:"questionType" validate:"required"`
-	OptionsJson			string 		`json:"optionsJson" validate:"required"`
+	OptionsJson			map[string]any 	`json:"optionsJson"`
 	StrategicAnswerId 	*uuid.UUID	`json:"strategicAnswerId"`
 	StrategicName 		*string 	`json:"strategicName"`
 	StrategicDescription *string	`json:"strategicDescription"`
 }
+
+type postCategoryAdminDTO struct{
+	Name 		string 	`json:"name" validate:"required"`
+	Description string 	`json:"description" validate:"required"`
+}
+
+type patchCategoryAdminDTO struct{
+	Name 		string 	`json:"name"`
+	Description string 	`json:"description"`
+}
+
+type postAdminQuizAdminDTO struct{
+	Name 		string 	`json:"name" validate:"required"`
+	Description string 	`json:"description" validate:"required"`
+	LanguageCode string 	`json:"languageCode" validate:"required"`
+}
+
+type patchQuizAdminDTO struct{
+	Name 		string 	`json:"name"`
+	Description string 	`json:"description"`
+	LanguageCode string 	`json:"languageCode"`
+	CategoryId 	*uuid.UUID	`json:"categoryId"`
+}
+
 
 /////////////////////////////////// ERRORS CODES
 
@@ -64,12 +100,141 @@ var quizzessErrorCodes = map[error] int{
 
 
 
-///////////////////////////////// ADMIN HANDLERS	/////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////
+func (h *QuizzesHandler) postAdminQuizCategory(w http.ResponseWriter, r *http.Request){
+	const maxUploadSize = 5 << 20 //5MB
+	var payload postCategoryAdminDTO
+	if err := utils.ParseAndReadMultiPartForm(w, r,maxUploadSize,&payload, "category"); err != nil{
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return 
+	}
+
+	// reading image
+	file, _, err := r.FormFile("image")
+	if err != nil{
+		utils.WriteError(w, http.StatusBadRequest, utils.ErrMissingFields)
+		return
+	}
+	defer file.Close()
+
+	// i could check image type here, howeever I'll leave it to the files service
+	err = h.adminService.CreateQuizCategory(r.Context(), payload.Name, payload.Description, file)
+	if err != nil{
+		code := utils.GetErrorCode(err, quizzessErrorCodes, 500)
+		utils.WriteError(w, code, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusCreated, nil)
+}
+
+
+func (h *QuizzesHandler) patchAdminQuizCategory(w http.ResponseWriter, r *http.Request){
+	id := chi.URLParam(r, CAT_ID_URL_PARAM)
+	parsedId, err := uuid.Parse(id)
+	if err != nil{
+		utils.WriteError(w, http.StatusBadRequest, utils.ErrInvalidId)
+		return 
+	}
+
+	const maxUploadSize = 5 << 20 //5MB
+	var payload patchCategoryAdminDTO
+	if err := utils.ParseAndReadMultiPartForm(w, r, maxUploadSize,&payload, "quiz"); err != nil{
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return 
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+
+	// reading image
+	file, _, err := r.FormFile("image")
+	if err != nil{
+		file = nil
+	}else{
+		defer file.Close()
+	}
+
+	if err := h.adminService.UpdateQuizCategory(r.Context(), parsedId, payload.Name, payload.Description, file ); err != nil{
+		code := utils.GetErrorCode(err, quizzessErrorCodes, 500)
+		utils.WriteError(w, code, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, nil)
+}
+
+func (h *QuizzesHandler) postAdminQuiz(w http.ResponseWriter, r *http.Request){
+	categoryId := chi.URLParam(r, CAT_ID_URL_PARAM)
+	catParsed, err := uuid.Parse(categoryId)
+	if err != nil{
+		utils.WriteError(w, http.StatusBadRequest, utils.ErrEmptyCategoryId)
+		return 
+	}
+	const maxUploadSize = 5 << 20 //5MB
+	var payload postAdminQuizAdminDTO
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+
+	if err := utils.ParseAndReadMultiPartForm(w, r, maxUploadSize, &payload, "quiz"); err != nil{
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return 
+	}
+
+	// reading image
+	file, _, err := r.FormFile("image")
+	if err != nil{
+		file = nil
+	}else{
+		defer file.Close()
+	}
+
+	err = h.adminService.CreateQuiz(r.Context(), payload.Name, payload.Description, payload.LanguageCode,catParsed, file)
+	if err != nil{
+		code := utils.GetErrorCode(err, quizzessErrorCodes, 500)
+		utils.WriteError(w, code, err)
+		return 
+	}
+	utils.WriteJSON(w, http.StatusCreated, nil)
+}
+
+
+
+func (h *QuizzesHandler) patchAdminQuiz(w http.ResponseWriter, r *http.Request){
+	quizId := chi.URLParam(r, QUIZ_ID_URL_PARAM)
+	quizParsed, err := uuid.Parse(quizId)
+	if err != nil{
+		utils.WriteError(w, http.StatusBadRequest, utils.ErrEmptuQuizId)
+		return 
+	}
+	const maxUploadSize = 5 << 20 //5MB
+	var payload patchQuizAdminDTO
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+
+	if err := utils.ParseAndReadMultiPartForm(w, r, maxUploadSize, &payload, "quiz"); err != nil{
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return 
+	}
+
+	// reading image
+	file, _, err := r.FormFile("image")
+	if err != nil{
+		file = nil
+	}else{
+		defer file.Close()
+	}
+
+	err = h.adminService.UpdateQuiz(r.Context(), quizParsed, payload.Name, payload.Description,payload.LanguageCode, payload.CategoryId, file)
+	if err != nil{
+		code := utils.GetErrorCode(err, quizzessErrorCodes, 500)
+		utils.WriteError(w, code, err)
+		return 
+	}
+	utils.WriteJSON(w, http.StatusCreated, nil)
+}
 
 
 func (h *QuizzesHandler) postQuestionHandler(w http.ResponseWriter, r *http.Request){
+	userId, ok := r.Context().Value(middlewares.UserIdKey{}).(uuid.UUID)
+	var ptUserId *uuid.UUID = nil
+	if ok{
+		ptUserId = &userId
+	}
+
 	id := chi.URLParam(r, QUIZ_ID_URL_PARAM)
 	parsedId, err := uuid.Parse(id)
 	if err != nil{
@@ -78,38 +243,28 @@ func (h *QuizzesHandler) postQuestionHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	const maxUploadSize = 20 << 20	//15MB
-	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
-
-	err = r.ParseMultipartForm(maxUploadSize)
-	if err != nil{
-		utils.WriteError(w, http.StatusBadRequest, utils.ErrFileTooBig)
-	}
-	
 	var payload postQuestionDTO
-	if err := utils.ReadFormJson(r, "question", &payload); err != nil{
+	if err := utils.ParseAndReadMultiPartForm(w, r, maxUploadSize, &payload, "question"); err != nil{
 		utils.WriteError(w, http.StatusBadRequest, err)
-		return 
+		return
 	}
 
 	//reading all images passed
 	images := map[string]io.Reader{}
-
 	files := r.MultipartForm.File["images"]
 	for _, header := range files{
 		file, err := header.Open()
-		if err != nil{
-			continue 
+		if err == nil{
+			defer file.Close()
+			images[header.Filename] = file
 		}
-		defer file.Close()
-		images[header.Filename] = file
 	}
 	
-	err = h.service.CreateQuestion(
-		r.Context(), 
-		parsedId,
+	err = h.service.CreateQuestion(r.Context(), ptUserId, parsedId,
 		quizzes.CreateQuestionRequest{
 			Question: payload.Question,
 			QType: payload.QuestionType,
+			OptionsJson: payload.OptionsJson,
 			StrategicAnswerId: payload.StrategicAnswerId,
 			StrategicName: payload.StrategicName,
 			StrategicDescription: payload.StrategicDescription,
@@ -117,10 +272,7 @@ func (h *QuizzesHandler) postQuestionHandler(w http.ResponseWriter, r *http.Requ
 		images,
 	)
 	if err != nil{
-		code, ok := quizzessErrorCodes[err]
-		if !ok{
-			code = 500
-		}
+		code := utils.GetErrorCode(err, quizzessErrorCodes, 500)
 		utils.WriteError(w, code, err)
 		return 
 	}

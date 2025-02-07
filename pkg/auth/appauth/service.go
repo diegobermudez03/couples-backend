@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/diegobermudez03/couples-backend/pkg/auth"
+	"github.com/diegobermudez03/couples-backend/pkg/infraestructure"
 	"github.com/diegobermudez03/couples-backend/pkg/users"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -20,6 +21,7 @@ import (
 
 
 type AuthServiceImpl struct {
+	transactions 		infraestructure.Transaction
 	authRepo 			auth.AuthRepository
 	usersService 		users.UsersService
 	accessTokenLife 	int64
@@ -30,8 +32,9 @@ type AuthServiceImpl struct {
 }
 
 
-func NewAuthService(authRepo auth.AuthRepository, usersService users.UsersService, accessTokenLife int64, refreshTokenLife int64, jwtSecret string) auth.AuthService{
+func NewAuthService(transactions infraestructure.Transaction, authRepo auth.AuthRepository, usersService users.UsersService, accessTokenLife int64, refreshTokenLife int64, jwtSecret string) auth.AuthService{
 	return &AuthServiceImpl{
+		transactions : transactions,
 		authRepo: authRepo,
 		usersService: usersService,
 		accessTokenLife: accessTokenLife,
@@ -130,25 +133,27 @@ func (s *AuthServiceImpl) CloseUsersSession(ctx context.Context, token string) e
 	} else if session == nil{
 		return auth.ErrorNonExistingSession
 	}
-	if num, err := s.authRepo.DeleteSessionById(ctx, session.Id); err != nil || num == 0{
-		return auth.ErrorWithLogout
-	} 
-	authUser, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
-	if err != nil || authUser == nil{
-		return nil
-	} 
-	//if it's an anonymous account then delete both the account and the user
-	if s.checkIfAnonymousAuth(authUser){
-		if _, err := s.authRepo.DeleteUserAuthById(ctx, authUser.Id); err != nil{
-			return auth.ErrorWithLogout 
-		}
-		if authUser.UserId != nil{
-			if err := s.usersService.DeleteUserById(ctx, *authUser.UserId); err != nil{
+	return s.transactions.Do(ctx, func(ctx context.Context) error {
+		if num, err := s.authRepo.DeleteSessionById(ctx, session.Id); err != nil || num == 0{
+			return auth.ErrorWithLogout
+		} 
+		authUser, err := s.authRepo.GetUserById(ctx, session.UserAuthId)
+		if err != nil || authUser == nil{
+			return nil
+		} 
+		//if it's an anonymous account then delete both the account and the user
+		if s.checkIfAnonymousAuth(authUser){
+			if _, err := s.authRepo.DeleteUserAuthById(ctx, authUser.Id); err != nil{
 				return auth.ErrorWithLogout 
 			}
+			if authUser.UserId != nil{
+				if err := s.usersService.DeleteUserById(ctx, *authUser.UserId); err != nil{
+					return auth.ErrorWithLogout 
+				}
+			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 func (s *AuthServiceImpl) CreateTempCouple(ctx context.Context, token string, startDate int) (int, error){
@@ -188,25 +193,31 @@ func (s *AuthServiceImpl) CreateUser(ctx context.Context, token, firstName, last
 		}
 	}
 
-	// create user with users service (receives the userId)
-	userId,  err := s.usersService.CreateUser(ctx, firstName, lastName, gender, countryCode, languageCode, birthDate)
-	if err != nil{
-		return "", err //sending other's domain ERROR 
-	}
-	//	if no token, create anonymous auth user and connect with user
-	if session != nil{
-		if num, err := s.authRepo.UpdateAuthUserId(ctx, session.UserAuthId, *userId); err != nil || num == 0{
-			return "", auth.ErrorCreatingUser  
+	err := s.transactions.Do(ctx, func(ctx context.Context) error {
+		// create user with users service (receives the userId)
+		userId,  err := s.usersService.CreateUser(ctx, firstName, lastName, gender, countryCode, languageCode, birthDate)
+		if err != nil{
+			return err //sending other's domain ERROR 
 		}
-	} else{
-		authId := uuid.New()
-		if num, err := s.authRepo.CreateEmptyUser(ctx, authId, *userId); err != nil || num == 0{
-			return "", auth.ErrorCreatingUser 
+		//	if no token, create anonymous auth user and connect with user
+		if session != nil{
+			if num, err := s.authRepo.UpdateAuthUserId(ctx, session.UserAuthId, *userId); err != nil || num == 0{
+				return auth.ErrorCreatingUser  
+			}
+		} else{
+			authId := uuid.New()
+			if num, err := s.authRepo.CreateEmptyUser(ctx, authId, *userId); err != nil || num == 0{
+				return auth.ErrorCreatingUser 
+			}
+			tk, err := s.createSession(ctx, authId, nil, nil)
+			if err != nil{
+				return err 
+			}
+			token = tk
 		}
-		return s.createSession(ctx, authId, nil, nil)
-	}
-	// if token, get the user auth and connect with userId
-	return token, nil
+		return nil
+	})
+	return token, err
 }
 
 

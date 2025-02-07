@@ -17,12 +17,12 @@ type orderingInput struct{
 	Options 		[]struct{
 		Text 		string	`json:"text" validate:"required"`
 		ImageName	string	`json:"imageName"`
-	}
+	}	`json:"options" validate:"required"`
 }
 
 type orderingOptionsFormat struct{
 	SortingType		string 	`json:"sortTp" validate:"required"`
-	Options 		[]orderingOption
+	Options 		[]orderingOption	`json:"opts" validate:"required"`
 }
 
 type orderingOption struct{
@@ -34,7 +34,7 @@ type orderingOption struct{
 
 func (s *UserService) orderingCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error) {
 	var input orderingInput
-	if err := json.Unmarshal([]byte(optionsJSON), &input); err != nil{
+	if err := s.readJson(optionsJSON, &input); err != nil{
 		return "", quizzes.ErrInvalidQuestionOptions
 	}
 
@@ -52,8 +52,10 @@ func (s *UserService) orderingCreator(ctx context.Context, quiz *quizzes.QuizPla
 	waitGroup := sync.WaitGroup{}
 	
 
-	for _, inputOption := range input.Options{
-		option := orderingOption{}
+	for ind, inputOption := range input.Options{
+		option := orderingOption{
+			OptId: ind,
+		}
 		option.Text = inputOption.Text
 
 		if inputOption.ImageName != ""{

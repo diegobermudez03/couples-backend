@@ -47,7 +47,17 @@ func ReadJSON(r *http.Request, payload any) error{
 }
 
 
-func ReadFormJson(r *http.Request, fieldName string, payload any) error{
+
+
+
+func ParseAndReadMultiPartForm(w http.ResponseWriter,r *http.Request, maxSize int64, payload any, fieldName string) error{
+	r.Body = http.MaxBytesReader(w, r.Body, maxSize)
+
+	err := r.ParseMultipartForm(maxSize)
+	if err != nil{
+		return ErrFileTooBig
+	}
+
 	text := r.FormValue(fieldName)
 	if text == ""{
 		return errorNoBody
@@ -59,4 +69,14 @@ func ReadFormJson(r *http.Request, fieldName string, payload any) error{
 		return errorInvalidBody
 	}
 	return nil
+} 
+
+
+
+func GetErrorCode(err error, errors map[error]int, fallback int) int{
+	code, ok := errors[err]
+	if !ok{
+		return 500
+	}
+	return code
 }

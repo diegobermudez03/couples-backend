@@ -139,18 +139,13 @@ func (h *AuthHandler) registerEndpoint(w http.ResponseWriter, r *http.Request){
 		token,
 	)
 	if err != nil{
-		errorCode, ok := authErrorCodes[err]
-		if !ok{
-			errorCode = 500
-		}
-		utils.WriteError(w, errorCode, err)
+		code := utils.GetErrorCode(err, authErrorCodes, 500)
+		utils.WriteError(w, code, err)
 		return  
 	}
 
 	// Respond
-	utils.WriteJSON(
-		w, 
-		http.StatusCreated, 
+	utils.WriteJSON(w, http.StatusCreated, 
 		map[string]any{
 			"refreshToken" : refreshToken,
 		},
@@ -167,11 +162,8 @@ func (h *AuthHandler) LoginEndpoint(w http.ResponseWriter, r *http.Request){
 
 	refreshToken, err := h.authService.LoginUserAuth(r.Context(), dto.Email, dto.Password, dto.Device, dto.Os)
 	if err != nil{
-		errorCode, ok := authErrorCodes[err]
-		if !ok{
-			errorCode = 500
-		}
-		utils.WriteError(w, errorCode, err)
+		code := utils.GetErrorCode(err, authErrorCodes, 500)
+		utils.WriteError(w, code, err)
 		return 
 	}
 	utils.WriteJSON(
@@ -203,11 +195,8 @@ func (h *AuthHandler) createUserEndpoint(w http.ResponseWriter, r *http.Request)
 		payload.BirthDate,
 	)
 	if err != nil{
-		errorCode, ok := authErrorCodes[err]
-		if !ok{
-			errorCode = 500
-		}
-		utils.WriteError(w, errorCode, err)
+		code := utils.GetErrorCode(err, authErrorCodes, 500)
+		utils.WriteError(w, code, err)
 		return 
 	}
 	utils.WriteJSON(w, http.StatusCreated, map[string]any{
@@ -224,11 +213,8 @@ func (h *AuthHandler) checkExistanceEndpoint(w http.ResponseWriter, r *http.Requ
 
 	status, err := h.authService.CheckUserAuthStatus(r.Context(), token)
 	if err != nil{
-		errorCode, ok := authErrorCodes[err]
-		if !ok{
-			errorCode = 500
-		}
-		utils.WriteError(w, errorCode, err)
+		code := utils.GetErrorCode(err, authErrorCodes, 500)
+		utils.WriteError(w, code, err)
 		return 
 	}
 	utils.WriteJSON(w, http.StatusOK, map[string]string{
@@ -244,11 +230,8 @@ func (h *AuthHandler) userLogoutEndpoint(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.authService.CloseUsersSession(r.Context(), token); err != nil{
-		errorCode, ok := authErrorCodes[err]
-		if !ok{
-			errorCode = 500
-		}
-		utils.WriteError(w, errorCode, err)
+		code := utils.GetErrorCode(err, authErrorCodes, 500)
+		utils.WriteError(w, code, err)
 		return 
 	}
 	utils.WriteJSON(w, http.StatusNoContent, nil)
@@ -262,11 +245,8 @@ func (h *AuthHandler) getTempCoupleCodeEndpoint(w http.ResponseWriter, r *http.R
 	}
 	tempCouple, err := h.authService.GetTempCoupleOfUser(r.Context(), token)
 	if err != nil{
-		errorCode, ok := authErrorCodes[err]
-		if !ok{
-			errorCode = 500
-		}
-		utils.WriteError(w, errorCode, err)
+		code := utils.GetErrorCode(err, authErrorCodes, 500)
+		utils.WriteError(w, code, err)
 		return 
 	}
 	dto := tempCoupleDTO{
@@ -295,11 +275,8 @@ func (h *AuthHandler) postTempCoupleCodeEndpoint(w http.ResponseWriter, r *http.
 
 	code, err := h.authService.CreateTempCouple(r.Context(), token, payload.StartDate)
 	if err != nil{
-		errorCode, ok := authErrorCodes[err]
-		if !ok{
-			errorCode = 500
-		}
-		utils.WriteError(w, errorCode, err)
+		code := utils.GetErrorCode(err, authErrorCodes, 500)
+		utils.WriteError(w, code, err)
 		return 
 	}
 	utils.WriteJSON(
@@ -328,11 +305,8 @@ func (h *AuthHandler) connectWithCoupleEndpoint(w http.ResponseWriter, r *http.R
 
 	accessToken, err := h.authService.ConnectCouple(r.Context(), token, payload.Code)
 	if err != nil{
-		errorCode, ok := authErrorCodes[err]
-		if !ok{
-			errorCode = 500
-		}
-		utils.WriteError(w, errorCode, err)
+		code := utils.GetErrorCode(err, authErrorCodes, 500)
+		utils.WriteError(w, code, err)
 		return 
 	}
 	utils.WriteJSON(w, http.StatusCreated, map[string]string{"accessToken" : accessToken})
@@ -349,11 +323,8 @@ func (h *AuthHandler) postAccessTokenEndpoint(w http.ResponseWriter, r *http.Req
 
 	accessToken, newRToken, err := h.authService.CreateAccessToken(r.Context(), payload.RefreshToken)
 	if err != nil{
-		errorCode, ok := authErrorCodes[err]
-		if !ok{
-			errorCode = 500
-		}
-		utils.WriteError(w, errorCode, err)
+		code := utils.GetErrorCode(err, authErrorCodes, 500)
+		utils.WriteError(w, code, err)
 		return 
 	}
 	utils.WriteJSON(
@@ -378,11 +349,8 @@ func (h *AuthHandler) postAdminAccessTokenEndpoint(w http.ResponseWriter, r *htt
 
 	accessToken, err := h.adminService.CreateAccessToken(r.Context(), payload.RefreshToken)
 	if err != nil{
-		errorCode, ok := authErrorCodes[err]
-		if !ok{
-			errorCode = 500
-		}
-		utils.WriteError(w, errorCode, err)
+		code := utils.GetErrorCode(err, authErrorCodes, 500)
+		utils.WriteError(w, code, err)
 		return 
 	}
 	utils.WriteJSON(
@@ -396,13 +364,10 @@ func (h *AuthHandler) postAdminAccessTokenEndpoint(w http.ResponseWriter, r *htt
 
 
 func (h *AuthHandler) logoutEndpoint(w http.ResponseWriter, r *http.Request){
-	sessionId := r.Context().Value(middlewares.SessionIdKey).(uuid.UUID)
+	sessionId := r.Context().Value(middlewares.SessionIdKey{}).(uuid.UUID)
 	if err := h.authService.LogoutSession(r.Context(), sessionId); err != nil{
-		errorCode, ok := authErrorCodes[err]
-		if !ok{
-			errorCode = 500
-		}
-		utils.WriteError(w, errorCode, err)
+		code := utils.GetErrorCode(err, quizzessErrorCodes, 500)
+		utils.WriteError(w, code, err)
 		return 
 	}
 	utils.WriteJSON(w, http.StatusNoContent, nil)
@@ -416,11 +381,8 @@ func (h *AuthHandler) suscribeTempCoupleNotifications(w http.ResponseWriter, r *
 	}
 	channel, userId, err := h.authService.SuscribeTempCoupleNot(r.Context(), token)
 	if err != nil{
-		errorCode, ok := authErrorCodes[err]
-		if !ok{
-			errorCode = 500
-		}
-		utils.WriteError(w, errorCode, err)
+		code := utils.GetErrorCode(err, authErrorCodes, 500)
+		utils.WriteError(w, code, err)
 		return
 	}
 	// SETTING SSE

@@ -1,4 +1,8 @@
 {
+    "input_format": {
+        "numAnswers" : 3
+    },
+    
     "question_options": {
         "numAnswers": 3
     },

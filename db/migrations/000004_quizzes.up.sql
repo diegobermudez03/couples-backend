@@ -1,8 +1,7 @@
 CREATE TABLE IF NOT EXISTS strategic_type_answers(
     id          UUID PRIMARY KEY,
     name        TEXT NOT NULL,
-    description TEXT NOT NULL,
-    type        TEXT NOT NULL
+    description TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS quiz_categories(
@@ -32,10 +31,9 @@ CREATE TABLE IF NOT EXISTS quiz_questions(
     ordering               INTEGER NOT NULL,
     question            TEXT NOT NULL,
     question_type       TEXT NOT NULL,
-    score_value         INTEGER NOT NULL,
     options_json        JSONB NOT NULL,
     quiz_id             UUID REFERENCES quizzes(id) NOT NULL,
-    strategic_answer    UUID REFERENCES strategic_type_answers(id)
+    strategic_answer_id    UUID REFERENCES strategic_type_answers(id)
 );
 
 

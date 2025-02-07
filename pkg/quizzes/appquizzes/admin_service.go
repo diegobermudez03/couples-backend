@@ -42,7 +42,7 @@ func (s *AdminServiceImpl) CreateQuizCategory(ctx context.Context, name, descrip
 	}
 	categoryId := uuid.New()
 
-	imageId, err := s.filesService.UploadImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, true, quizzes.DOMAIN_NAME, quizzes.CATEGORIES, categoryId.String(), quizzes.PROFILE)
+	imageId, _, err := s.filesService.UploadImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, true, quizzes.DOMAIN_NAME, quizzes.CATEGORIES, categoryId.String(), quizzes.PROFILE)
 	if err != nil{
 		if errors.Is(err, files.ErrInvalidImageType){
 			return quizzes.ErrInvalidImageType
@@ -120,7 +120,7 @@ func (s *AdminServiceImpl) CreateQuiz(ctx context.Context, name, description, la
 	quizId := uuid.New()
 	var imageId *uuid.UUID
 	if image != nil{
-		imageId, _ = s.filesService.UploadImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, true, quizzes.DOMAIN_NAME, quizzes.QUIZZES, quizId.String(), quizzes.PROFILE)
+		imageId, _, _ = s.filesService.UploadImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, true, quizzes.DOMAIN_NAME, quizzes.QUIZZES, quizId.String(), quizzes.PROFILE)
 	}
 
 	model := quizzes.QuizPlainModel{
@@ -159,7 +159,7 @@ func (s *AdminServiceImpl)  UpdateQuiz(ctx context.Context, quizId uuid.UUID, na
 			s.filesService.UpdateImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, *quiz.ImageId)
 		} else{
 			//if its a new image
-			id, err := s.filesService.UploadImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, true, quizzes.DOMAIN_NAME, quizzes.QUIZZES, quiz.Id.String(), quizzes.PROFILE)
+			id, _, err := s.filesService.UploadImage(ctx, image, files.MAX_SIZE_PROFILE_PICTURE, true, quizzes.DOMAIN_NAME, quizzes.QUIZZES, quiz.Id.String(), quizzes.PROFILE)
 			if err == nil{
 				quiz.ImageId = id
 			}

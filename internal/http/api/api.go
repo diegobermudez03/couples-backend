@@ -13,6 +13,7 @@ import (
 	"github.com/diegobermudez03/couples-backend/pkg/auth/repoauth"
 	"github.com/diegobermudez03/couples-backend/pkg/files/appfiles"
 	"github.com/diegobermudez03/couples-backend/pkg/files/repofiles"
+	"github.com/diegobermudez03/couples-backend/pkg/infraestructure"
 	"github.com/diegobermudez03/couples-backend/pkg/localization/applocalization"
 	"github.com/diegobermudez03/couples-backend/pkg/quizzes/appquizzes"
 	"github.com/diegobermudez03/couples-backend/pkg/quizzes/repoquizzes"
@@ -83,6 +84,8 @@ func (s *APIServer) Shutdown() error{
 
 func (s *APIServer) injectDependencies(router *chi.Mux){
 	baseUrl := "http://localhost:" + s.config.Port + "/v1"
+
+	transactions := infraestructure.NewTransactions(s.db)
 	//create respositories
 	authRepository := repoauth.NewAuthPostgresRepo(s.db)
 	usersRepository := repousers.NewUsersPostgresRepo(s.db)
@@ -94,24 +97,22 @@ func (s *APIServer) injectDependencies(router *chi.Mux){
 	filesService := appfiles.NewFilesServiceImpl(filesRepository, filesRepo, baseUrl)
 	localizationService := applocalization.NewLocalizationServiceImpl()
 	usersService := appusers.NewUsersServiceImpl(localizationService, usersRepository)
-	authService := appauth.NewAuthService(authRepository, usersService, s.config.AuthConfig.AccessTokenLife, s.config.AuthConfig.RefreshTokenLife, s.config.AuthConfig.JwtSecret)
+	authService := appauth.NewAuthService(transactions, authRepository, usersService, s.config.AuthConfig.AccessTokenLife, s.config.AuthConfig.RefreshTokenLife, s.config.AuthConfig.JwtSecret)
 	authAdminService := appauth.NewAdminAuthService(authRepository, s.config.AuthConfig.JwtSecret, s.config.AuthConfig.AccessTokenLife)
 	quizzesAdminService := appquizzes.NewAdminServiceImpl(filesService, localizationService,quizzesRepository)
-	quizzesUserService := appquizzes.NewUserService(quizzesRepository)
+	quizzesUserService := appquizzes.NewUserService(filesService,quizzesRepository)
 
 	//middlewares
 	middlewares := middlewares.NewMiddlewares(authService, authAdminService)
 	//create handlers
 	authHandler := handlers.NewAuthHandler(authService, authAdminService, middlewares)
 	usersHandler := handlers.NewUsersHandler(usersService, middlewares)
-	quizzesHandler := handlers.NewQuizzesHandler(quizzesUserService, middlewares)
-	quizzesAdminHandler := handlers.NewQuizzesAdminHandler(quizzesAdminService, middlewares)
+	quizzesHandler := handlers.NewQuizzesHandler(quizzesAdminService,quizzesUserService, middlewares)
 	filesHandler := handlers.NewFilesHandler(filesService)
 
 	//registering routes
 	authHandler.RegisterRoutes(router)
 	usersHandler.RegisterRoutes(router)
 	quizzesHandler.RegisterRoutes(router)
-	quizzesAdminHandler.RegisterRoutes(router)
 	filesHandler.RegisterRoutes(router)
 }

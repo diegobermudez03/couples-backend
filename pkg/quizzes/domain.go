@@ -19,14 +19,14 @@ type AdminService interface {
 type CreateQuestionRequest struct{
 	Question 		string 
 	QType 			string 
-	OptionsJson		string 
+	OptionsJson		map[string]any 
 	StrategicAnswerId *uuid.UUID
 	StrategicName 		*string 
 	StrategicDescription *string 
 }
 
 type UserService interface{
-	CreateQuestion(ctx context.Context, quizId uuid.UUID, parameters CreateQuestionRequest, images map[string]io.Reader) error
+	CreateQuestion(ctx context.Context, userId *uuid.UUID, quizId uuid.UUID, parameters CreateQuestionRequest, images map[string]io.Reader) error
 }
 
 type QuizzesRepository interface{
@@ -40,9 +40,9 @@ type QuizzesRepository interface{
 	UpdateQuiz(ctx context.Context, quiz *QuizPlainModel) (int, error)
 
 
-	GetQuestionsFromQuizId(ctx context.Context, quizId uuid.UUID) ([]QuestionPlainModel, error)
+	//GetQuestionsFromQuizId(ctx context.Context, quizId uuid.UUID) ([]QuestionPlainModel, error)
 	GetMaxOrderQuestionFromQuiz(ctx context.Context, quizId uuid.UUID) (int, error)
-	CreateQuestion(ctx context.Context, model *QuestionPlainModel) error
+	CreateQuestion(ctx context.Context, model *QuestionPlainModel) (int, error)
 
 	GetStrategicTypeAnswerById(ctx context.Context, id uuid.UUID) (*StrategicAnswerModel, error)
 	CreateStrategicTypeAnswer(ctx context.Context, model *StrategicAnswerModel) (int, error)
