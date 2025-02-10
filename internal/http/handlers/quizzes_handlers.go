@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/diegobermudez03/couples-backend/internal/http/middlewares"
@@ -39,11 +40,11 @@ func (h *QuizzesHandler) RegisterRoutes(r *chi.Mux) {
 	r.Mount("/quizzes", routerUsers)
 
 	//	quiz handlers
-	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Patch(fmt.Sprintf("/{%s}", QUIZ_ID_URL_PARAM), h.patchQuizHandler)
-	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Delete(fmt.Sprintf("/{%s}", QUIZ_ID_URL_PARAM), h.deleteQuiz)
+	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Patch(fmt.Sprintf("/quiz/{%s}", QUIZ_ID_URL_PARAM), h.patchQuizHandler)
+	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Delete(fmt.Sprintf("/quiz/{%s}", QUIZ_ID_URL_PARAM), h.deleteQuiz)
 	routerUsers.Post("/", h.postQuiz)
 	// 	question handlers
-	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Post(fmt.Sprintf("/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
+	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Post(fmt.Sprintf("/quiz/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
 	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Delete(fmt.Sprintf("/questions/{%s}", QUESTION_ID_URL_PARAM), h.deleteQuestion)
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -55,10 +56,10 @@ func (h *QuizzesHandler) RegisterRoutes(r *chi.Mux) {
 	routerAdmin.Delete(fmt.Sprintf("/categories/{%s}", CAT_ID_URL_PARAM), h.deleteCategory)
 	//	quiz handlers
 	routerAdmin.Post(fmt.Sprintf("/categories/{%s}/quizzes", CAT_ID_URL_PARAM), h.postQuiz)
-	routerAdmin.Patch(fmt.Sprintf("/{%s}", QUIZ_ID_URL_PARAM), h.patchQuizHandler)
-	routerAdmin.Delete(fmt.Sprintf("/{%s}", QUIZ_ID_URL_PARAM), h.deleteQuiz)
+	routerAdmin.Patch(fmt.Sprintf("/quiz/{%s}", QUIZ_ID_URL_PARAM), h.patchQuizHandler)
+	routerAdmin.Delete(fmt.Sprintf("/quiz/{%s}", QUIZ_ID_URL_PARAM), h.deleteQuiz)
 	//question handlers
-	routerAdmin.Post(fmt.Sprintf("/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
+	routerAdmin.Post(fmt.Sprintf("/quiz/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
 	routerAdmin.Delete(fmt.Sprintf("/questions/{%s}", QUESTION_ID_URL_PARAM), h.deleteQuestion)
 }
 
@@ -211,6 +212,7 @@ func (h *QuizzesHandler) postQuiz(w http.ResponseWriter, r *http.Request){
 
 
 func (h *QuizzesHandler) patchQuizHandler(w http.ResponseWriter, r *http.Request){
+	log.Println("patch quiz")
 	quizId := chi.URLParam(r, QUIZ_ID_URL_PARAM)
 	quizParsed, err := uuid.Parse(quizId)
 	if err != nil{
@@ -245,6 +247,7 @@ func (h *QuizzesHandler) patchQuizHandler(w http.ResponseWriter, r *http.Request
 
 
 func (h *QuizzesHandler) postQuestionHandler(w http.ResponseWriter, r *http.Request){
+	log.Print("post question handler")
 	id := chi.URLParam(r, QUIZ_ID_URL_PARAM)
 	parsedId, err := uuid.Parse(id)
 	if err != nil{

@@ -23,36 +23,26 @@ func NewAuthPostgresRepo(db *sql.DB) auth.AuthRepository{
 }
 
 func (r *AuthPostgresRepo) CreateUserAuth(ctx context.Context, id uuid.UUID, email string, hash string) (int, error) {
-	executor := infraestructure.GetDBContext(ctx, r.db)
-	result, err := executor.ExecContext(
-		ctx,
-		`INSERT INTO users_auth(id, email, hash, created_at) 
-		VALUES ($1, $2, $3, $4)`,
-		id, email, hash, time.Now(),
-	)
-	if err != nil{
-		log.Print("error creating user: ", err.Error())
-		return 0, err
-	}
-	num, _ := result.RowsAffected()
-	return int(num), nil
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return ex.ExecContext(
+			ctx,
+			`INSERT INTO users_auth(id, email, hash, created_at) 
+			VALUES ($1, $2, $3, $4)`,
+			id, email, hash, time.Now(),
+		)
+	})
 }
 
 func (r *AuthPostgresRepo) CreateSession(ctx context.Context,  sessionModel *auth.SessionModel) (int, error){
-	executor := infraestructure.GetDBContext(ctx, r.db)
-	result, err := executor.ExecContext(
-		ctx,
-		`INSERT INTO sessions(id, token, device, os, expires_at, created_at, last_used, user_auth_id)
-		VALUES($1, $2, $3, $4, $5, $6, $7, $8)`,
-		sessionModel.Id, sessionModel.Token, sessionModel.Device, sessionModel.Os, sessionModel.ExpiresAt, 
-		sessionModel.CreatedAt, sessionModel.LastUsed, sessionModel.UserAuthId,
-	)
-	if err != nil{
-		log.Print("error creating session: ", err.Error())
-		return 0, err
-	}
-	num, _ := result.RowsAffected()
-	return int(num), nil
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return ex.ExecContext(
+			ctx,
+			`INSERT INTO sessions(id, token, device, os, expires_at, created_at, last_used, user_auth_id)
+			VALUES($1, $2, $3, $4, $5, $6, $7, $8)`,
+			sessionModel.Id, sessionModel.Token, sessionModel.Device, sessionModel.Os, sessionModel.ExpiresAt, 
+			sessionModel.CreatedAt, sessionModel.LastUsed, sessionModel.UserAuthId,
+		)
+	})
 }
 
 func (r *AuthPostgresRepo) GetUserByEmail(ctx context.Context, email string) (*auth.UserAuthModel, error){
@@ -96,79 +86,54 @@ func (r *AuthPostgresRepo) GetUserById(ctx context.Context, id uuid.UUID) (*auth
 }
 
 func (r *AuthPostgresRepo) CreateEmptyUser(ctx context.Context, id uuid.UUID, userId uuid.UUID) (int, error) {
-	executor := infraestructure.GetDBContext(ctx, r.db)
-	result, err := executor.ExecContext(
-		ctx, 
-		`INSERT INTO users_auth(id, user_id, created_at) VALUES($1, $2, $3)`,
-		id, userId, time.Now(),
-	)
-	if err != nil{
-		log.Print("error creating empty user: ", err.Error())
-		return 0, err
-	}
-	num, _ := result.RowsAffected()
-	return int(num), nil
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return ex.ExecContext(
+			ctx, 
+			`INSERT INTO users_auth(id, user_id, created_at) VALUES($1, $2, $3)`,
+			id, userId, time.Now(),
+		)
+	})
 }
 
 func (r *AuthPostgresRepo) UpdateAuthUserId(ctx context.Context, authId uuid.UUID, userId uuid.UUID) (int, error){
-	executor := infraestructure.GetDBContext(ctx, r.db)
-	result, err := executor.ExecContext(
-		ctx, 
-		`UPDATE users_auth SET user_id = $1 WHERE id = $2`,
-		userId, authId,
-	)
-	if err != nil{
-		log.Print("error vinculating account: ", err.Error())
-		return 0, err
-	}
-	num, _ := result.RowsAffected()
-	return int(num), nil
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return ex.ExecContext(
+			ctx, 
+			`UPDATE users_auth SET user_id = $1 WHERE id = $2`,
+			userId, authId,
+		)
+	})
 }
 
 func (r *AuthPostgresRepo) DeleteSessionById(ctx context.Context, sessionId uuid.UUID) (int, error){
-	executor := infraestructure.GetDBContext(ctx, r.db)
-	result, err := executor.ExecContext(
-		ctx, 
-		`DELETE FROM sessions WHERE id = $1`, 
-		sessionId,
-	)
-	if err != nil{
-		log.Print("error deleting session: ", err.Error())
-		return 0, err
-	}
-	num, _ := result.RowsAffected()
-	return int(num), nil
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return ex.ExecContext(
+			ctx, 
+			`DELETE FROM sessions WHERE id = $1`, 
+			sessionId,
+		)
+	})
 }
 
 func (r *AuthPostgresRepo) DeleteUserAuthById(ctx context.Context, authId uuid.UUID) (int, error){
-	executor := infraestructure.GetDBContext(ctx, r.db)
-	result, err := executor.ExecContext(
-		ctx, 
-		`DELETE FROM users_auth WHERE id = $1`, 
-		authId,
-	)
-	if err != nil{
-		log.Print("error deleting account: ", err.Error())
-		return 0, err
-	}
-	num, _ := result.RowsAffected()
-	return int(num), nil
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return  ex.ExecContext(
+			ctx, 
+			`DELETE FROM users_auth WHERE id = $1`, 
+			authId,
+		)
+	})
 }
 
 func (r *AuthPostgresRepo) UpdateAuthUserById(ctx context.Context, authId uuid.UUID, authModel *auth.UserAuthModel) (int, error){
-	executor := infraestructure.GetDBContext(ctx, r.db)
-	result, err := executor.ExecContext(
-		ctx,
-		`UPDATE users_auth SET email = $1, hash = $2, oauth_provider = $3, oauth_id = $4
-		WHERE id = $5`,
-		authModel.Email, authModel.Hash, authModel.OauthProvider, authModel.OauthId, authId,
-	)
-	if err != nil{
-		log.Print("error updating account: ", err.Error())
-		return 0, err
-	}
-	num, _ := result.RowsAffected()
-	return int(num), nil
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return ex.ExecContext(
+			ctx,
+			`UPDATE users_auth SET email = $1, hash = $2, oauth_provider = $3, oauth_id = $4
+			WHERE id = $5`,
+			authModel.Email, authModel.Hash, authModel.OauthProvider, authModel.OauthId, authId,
+		)
+	})
 }
 
 func (r *AuthPostgresRepo) GetSessionById(ctx context.Context, id uuid.UUID) (*auth.SessionModel, error){
@@ -191,17 +156,13 @@ func (r *AuthPostgresRepo) GetSessionById(ctx context.Context, id uuid.UUID) (*a
 }
 
 func (r *AuthPostgresRepo)  UpdateSessionLastUsed(ctx context.Context, sessionId uuid.UUID, lastTime time.Time) (int, error){
-	executor := infraestructure.GetDBContext(ctx, r.db)
-	result, err := executor.ExecContext(
-		ctx,
-		`UPDATE sessions SET last_used = $1 WHERE id = $2`,
-		lastTime, sessionId,
-	)
-	if err != nil{
-		return 0,err 
-	}
-	num, _ := result.RowsAffected()
-	return int(num), nil
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return ex.ExecContext(
+			ctx,
+			`UPDATE sessions SET last_used = $1 WHERE id = $2`,
+			lastTime, sessionId,
+		)
+	})
 }
 
 

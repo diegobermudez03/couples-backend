@@ -40,11 +40,3 @@ func (t *Transactions) Do(ctx context.Context, f func(context.Context)error) err
 	return tx.Commit()
 }
 
-
-func GetDBContext(ctx context.Context, fallback Executor) Executor{
-	tx := ctx.Value(dbKey{})
-	if tx == nil{
-		return fallback
-	}
-	return tx.(*sql.Tx)
-}

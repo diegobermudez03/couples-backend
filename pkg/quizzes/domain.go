@@ -23,7 +23,8 @@ type CreateQuestionRequest struct{
 }
 
 type UserService interface{
-	GetQuizById(ctx context.Context, quizId uuid.UUID)(*QuizPlainModel, error)
+	AuthorizeQuizCreator(ctx context.Context, quizId *uuid.UUID, questionId *uuid.UUID, userId uuid.UUID) error
+	
 	CreateQuiz(ctx context.Context, name, description, languageCode string, categoryId, userId *uuid.UUID, image io.Reader) error
 	UpdateQuiz(ctx context.Context, quizId uuid.UUID, name, description, languageCode string, categoryId *uuid.UUID, image io.Reader) error
 	DeleteQuiz(ctx context.Context, quizId uuid.UUID) error

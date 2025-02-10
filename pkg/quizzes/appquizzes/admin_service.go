@@ -102,7 +102,7 @@ func (s *AdminServiceImpl) UpdateQuizCategory(ctx context.Context, id uuid.UUID,
 
 
 func (s *AdminServiceImpl) DeleteQuizCategory(ctx context.Context, catId uuid.UUID) error{
-	quizs, err := s.quizzesRepo.GetQuizzesByCategoryId(ctx, catId)
+	quizs, err := s.quizzesRepo.GetQuizzes(ctx, quizzes.QuizFilter{CategoryId: &catId})
 	if err != nil{
 		return quizzes.ErrDeletingCategory
 	}

@@ -24,34 +24,24 @@ func NewUsersPostgresRepo(db *sql.DB) users.UsersRepo{
 }
 
 func (r *UsersPostgresRepo) CreateUser(ctx context.Context, user *users.UserModel) (int, error){
-	executor := infraestructure.GetDBContext(ctx, r.db)
-	result, err := executor.ExecContext(
-		ctx, 
-		`INSERT INTO users(id, first_name, last_name, gender, birth_date, created_at, active, country_code, language_code, nickname)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-		user.Id, user.FirstName, user.LastName, user.Gender, user.BirthDate, user.CreatedAt, user.Active, user.CountryCode, user.LanguageCode, user.NickName,
-	)
-	if err != nil {
-		log.Print("error creating user: ", err.Error())
-		return 0, err
-	}
-	num, _ := result.RowsAffected()
-	return int(num), nil
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return ex.ExecContext(
+			ctx, 
+			`INSERT INTO users(id, first_name, last_name, gender, birth_date, created_at, active, country_code, language_code, nickname)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+			user.Id, user.FirstName, user.LastName, user.Gender, user.BirthDate, user.CreatedAt, user.Active, user.CountryCode, user.LanguageCode, user.NickName,
+		)
+	})
 }
 
 func (r *UsersPostgresRepo) DeleteUserById(ctx context.Context, userId uuid.UUID) (int, error){
-	executor := infraestructure.GetDBContext(ctx, r.db)
-	result, err := executor.ExecContext(
-		ctx, 
-		`DELETE FROM users WHERE id = $1`,
-		userId,
-	)
-	if err != nil{
-		log.Print("error deleting user: ", err.Error())
-		return 0, err
-	}
-	num, _ := result.RowsAffected()
-	return int(num), nil
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return  ex.ExecContext(
+			ctx, 
+			`DELETE FROM users WHERE id = $1`,
+			userId,
+		)
+	})
 }
 
 func (r *UsersPostgresRepo) GetTempCoupleByCode(ctx context.Context, code int) (*users.TempCoupleModel, error){
@@ -89,33 +79,23 @@ func (r *UsersPostgresRepo) CheckTempCoupleById(ctx context.Context, userId uuid
 }
 
 func (r *UsersPostgresRepo) UpdateTempCouple(ctx context.Context, tempCouple *users.TempCoupleModel) (int, error){
-	executor := infraestructure.GetDBContext(ctx, r.db)
-	result, err := executor.ExecContext(
-		ctx,
-		`UPDATE temp_couples SET code = $1, start_date = $2, updated_at = $3 WHERE user_id = $4`,
-		tempCouple.Code, tempCouple.StartDate ,time.Now(), tempCouple.UserId,
-	)
-	if err != nil{
-		log.Print("error updating couple: ", err.Error())
-		return 0, err
-	}
-	num, _ := result.RowsAffected()
-	return int(num), nil
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return ex.ExecContext(
+			ctx,
+			`UPDATE temp_couples SET code = $1, start_date = $2, updated_at = $3 WHERE user_id = $4`,
+			tempCouple.Code, tempCouple.StartDate ,time.Now(), tempCouple.UserId,
+		)
+	})
 }
 
 func (r *UsersPostgresRepo) CreateTempCouple(ctx context.Context, tempCouple *users.TempCoupleModel) (int, error){
-	executor := infraestructure.GetDBContext(ctx, r.db)
-	result, err := executor.ExecContext(
-		ctx,
-		`INSERT INTO temp_couples (user_id, code, start_date, updated_at, created_at) VALUES($1, $2, $3, $4, $5)`,
-		tempCouple.UserId, tempCouple.Code, tempCouple.StartDate ,time.Now(), time.Now(),
-	)
-	if err != nil{
-		log.Print("error creating temp couple: ", err.Error())
-		return 0, err
-	}
-	num, _ := result.RowsAffected()
-	return int(num), nil
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return ex.ExecContext(
+			ctx,
+			`INSERT INTO temp_couples (user_id, code, start_date, updated_at, created_at) VALUES($1, $2, $3, $4, $5)`,
+			tempCouple.UserId, tempCouple.Code, tempCouple.StartDate ,time.Now(), time.Now(),
+		)
+	})
 }
 
 func (r *UsersPostgresRepo)  GetCoupleByUserId(ctx context.Context, userId uuid.UUID) (*users.CoupleModel, error){
@@ -138,50 +118,35 @@ func (r *UsersPostgresRepo)  GetCoupleByUserId(ctx context.Context, userId uuid.
 }
 
 func (r *UsersPostgresRepo)  DeleteTempCoupleById(ctx context.Context, id uuid.UUID) (int, error){
-	executor := infraestructure.GetDBContext(ctx, r.db)
-	result, err := executor.ExecContext(
-		ctx, 
-		`DELETE FROM temp_couples WHERE user_id = $1`,
-		id,
-	)
-	if err != nil{
-		log.Print("error deleting temp couple: ", err.Error())
-		return 0, err
-	}
-	num, _ := result.RowsAffected()
-	return int(num), nil
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return ex.ExecContext(
+			ctx, 
+			`DELETE FROM temp_couples WHERE user_id = $1`,
+			id,
+		)
+	})
 }
 
 func (r *UsersPostgresRepo) CreateCouple(ctx context.Context, couple *users.CoupleModel) (int, error){
-	executor := infraestructure.GetDBContext(ctx, r.db)
-	result, err := executor.ExecContext(
-		ctx, 
-		`INSERT INTO couples(id, he_id, she_id, relation_start)
-		VALUES($1, $2, $3, $4)`,
-		couple.Id, couple.HeId, couple.SheId, couple.RelationStart,
-	)
-	if err != nil{
-		log.Print("error creating couple: ", err.Error())
-		return 0, err
-	}
-	num, _ := result.RowsAffected()
-	return int(num), nil
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return ex.ExecContext(
+			ctx, 
+			`INSERT INTO couples(id, he_id, she_id, relation_start)
+			VALUES($1, $2, $3, $4)`,
+			couple.Id, couple.HeId, couple.SheId, couple.RelationStart,
+		)
+	})
 }
 
 func (r *UsersPostgresRepo) CreateCouplePoints(ctx context.Context, points *users.PointsModel) (int, error) {
-	executor := infraestructure.GetDBContext(ctx, r.db)
-	result, err := executor.ExecContext(
-		ctx, 
-		`INSERT INTO points(id, points, day)
-		VALUES($1, $2, $3)`,
-		points.Id, points.Points, points.Day,
-	)
-	if err != nil{
-		log.Print("error creating points: ", err.Error())
-		return 0, err
-	}
-	num, _ := result.RowsAffected()
-	return int(num), nil
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return ex.ExecContext(
+			ctx, 
+			`INSERT INTO points(id, points, day)
+			VALUES($1, $2, $3)`,
+			points.Id, points.Points, points.Day,
+		)
+	})
 }
 
 func (r *UsersPostgresRepo) GetUserById(ctx context.Context, userId uuid.UUID) (*users.UserModel, error){
@@ -224,18 +189,13 @@ func (r *UsersPostgresRepo) GetCoupleById(ctx context.Context, coupleId uuid.UUI
 }
 
 func (r *UsersPostgresRepo) UpdateUserNicknameById(ctx context.Context, userId uuid.UUID, nickname string) (int, error){
-	executor := infraestructure.GetDBContext(ctx, r.db)
-	result, err := executor.ExecContext(
-		ctx,
-		`UPDATE users SET nickname = $1 WHERE id = $2`,
-		nickname, userId,
-	)
-	if err != nil{
-		log.Print("error updating user ", err.Error())
-		return 0, err
-	}
-	num, _ := result.RowsAffected()
-	return int(num), nil
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return ex.ExecContext(
+			ctx,
+			`UPDATE users SET nickname = $1 WHERE id = $2`,
+			nickname, userId,
+		)
+	})
 }
 
 func (r *UsersPostgresRepo) GetTempCoupleFromUser(ctx context.Context, userId uuid.UUID)(*users.TempCoupleModel, error){

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/diegobermudez03/couples-backend/pkg/files"
+	"github.com/diegobermudez03/couples-backend/pkg/infraestructure"
 	"github.com/diegobermudez03/couples-backend/pkg/localization"
 	"github.com/diegobermudez03/couples-backend/pkg/quizzes"
 	"github.com/go-playground/validator/v10"
@@ -17,6 +18,7 @@ import (
 type QuestionOptionsCreator func(ctx context.Context, quiz *quizzes.QuizPlainModel, inputOptions string, images map[string]io.Reader, questionId uuid.UUID) (string, error)
 
 type UserService struct{
+	transactions 	infraestructure.Transaction
 	fileService		files.Service
 	loacalizationService localization.LocalizationService
 	repo 			quizzes.QuizzesRepository
@@ -25,10 +27,13 @@ type UserService struct{
 }
 
 func NewUserService(
+	transactions infraestructure.Transaction,
 	fileService	files.Service, 
 	loacalizationService localization.LocalizationService, 
-	repo quizzes.QuizzesRepository) quizzes.UserService{
+	repo quizzes.QuizzesRepository,
+	) quizzes.UserService{
 	service := &UserService{
+		transactions: transactions,
 		fileService: fileService,
 		loacalizationService: loacalizationService,
 		repo: repo,
@@ -46,15 +51,27 @@ func NewUserService(
 	return service
 }
 
-func (s *UserService) GetQuizById(ctx context.Context, quizId uuid.UUID)(*quizzes.QuizPlainModel, error){
-	quiz, err := s.repo.GetQuizById(ctx, quizId)
-	if err != nil{
-		return nil, quizzes.ErrRetrievingQuiz
-	}else if quiz == nil{
-		return nil, quizzes.ErrQuizNotFound
+
+func (s *UserService) AuthorizeQuizCreator(ctx context.Context, quizId *uuid.UUID, questionId *uuid.UUID, userId uuid.UUID) error{
+	if quizId == nil{
+		question, _ := s.repo.GetQuestionById(ctx, *questionId)
+		if question == nil{
+			return quizzes.ErrQuestionNotFound
+		}
+		quizId = &question.QuizId
 	}
-	return quiz, nil
+	quiz, err := s.repo.GetQuizById(ctx, *quizId)
+	if err != nil{
+		return quizzes.ErrRetrievingQuiz
+	}else if quiz == nil{
+		return quizzes.ErrQuizNotFound
+	}
+	if quiz.CreatorId != &userId{
+		return quizzes.ErrUnathorizedToEditQuiz
+	}
+	return nil
 }
+
 
 func (s *UserService) CreateQuiz(ctx context.Context, name, description, languageCode string, categoryId, userId *uuid.UUID, image io.Reader) error{
 	if name == ""{
@@ -207,14 +224,16 @@ func (s *UserService) CreateQuestion(ctx context.Context, quizId uuid.UUID, para
 }
 
 func (s *UserService) DeleteQuestion(ctx context.Context, questionId uuid.UUID) error{
-	count, err := s.repo.GetUsersAnswersCountByQuestionId(ctx, questionId)
+	count, err := s.repo.GetUsersAnswersCount(ctx, quizzes.UserAnswerFilter{QuestionId: &questionId})
 	if err != nil{
 		return quizzes.ErrDeletingQuestion
 	}
 
 	var num int 
 	if count == 0{
+		log.Print("deleting")
 		num, err = s.repo.DeleteQuestions(ctx, quizzes.QuestionFilter{Id: &questionId})
+		log.Print("after deleting")
 	}else{
 		num, err = s.repo.SoftDeleteQuestions(ctx, quizzes.QuestionFilter{Id: &questionId})
 	}
@@ -233,17 +252,24 @@ func (s *UserService) DeleteQuiz(ctx context.Context, quizId uuid.UUID) error{
 	}
 	var num int 
 	if count == 0{
-		questions, auxErr := s.repo.GetQuestionsByQuizId(ctx, quizId)
-		if auxErr != nil{
-			return quizzes.ErrDeletingQuiz
-		}
-		for _, q := range questions{
-			_, auxErr := s.repo.DeleteUsersAnswers(ctx, quizzes.UserAnswerFilter{QuestionId: &q.Id})
+		err = s.transactions.Do(ctx, func(ctx context.Context) error {
+			questions, auxErr := s.repo.GetQuestions(ctx, quizzes.QuestionFilter{QuizId: &quizId})
 			if auxErr != nil{
 				return quizzes.ErrDeletingQuiz
 			}
-		}
-		num, err = s.repo.DeleteQuestions(ctx, quizzes.QuestionFilter{QuizId: &quizId})
+			for _, q := range questions{
+				_, auxErr := s.repo.DeleteUsersAnswers(ctx, quizzes.UserAnswerFilter{QuestionId: &q.Id})
+				if auxErr != nil{
+					return quizzes.ErrDeletingQuiz
+				}
+			}
+			num, err = s.repo.DeleteQuestions(ctx, quizzes.QuestionFilter{QuizId: &quizId})
+			if err != nil {
+				return quizzes.ErrDeletingQuiz
+			}
+			num, err = s.repo.DeleteQuizById(ctx, quizId)
+			return err
+		})
 	}else{
 		num, err = s.repo.SoftDeleteQuizById(ctx, quizId)
 	}

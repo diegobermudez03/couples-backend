@@ -22,18 +22,14 @@ func NewFilesPostgresRepo(db *sql.DB) files.Repository{
 
 
 func (r *FilesPostgresRepo) CreateFile(ctx context.Context, file *files.FileModel) (int,error){
-	executor := infraestructure.GetDBContext(ctx, r.db)
-	result, err := executor.ExecContext(
-		ctx, 
-		`INSERT INTO files(id, bucket, grouping, object_key, url, public, type)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		file.Id, file.Bucket, file.Group, file.ObjectKey, file.Url, file.Public, file.Type,
-	)
-	if err != nil{
-		return 0, err 
-	}
-	num, _ := result.RowsAffected()
-	return int(num), nil 
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return ex.ExecContext(
+			ctx, 
+			`INSERT INTO files(id, bucket, grouping, object_key, url, public, type)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+			file.Id, file.Bucket, file.Group, file.ObjectKey, file.Url, file.Public, file.Type,
+		)
+	})
 }
 
 func (r *FilesPostgresRepo) GetFileById(ctx context.Context, id uuid.UUID) (*files.FileModel, error){

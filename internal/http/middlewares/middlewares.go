@@ -20,6 +20,8 @@ var (
 )
 
 const QUIZ_ID_URL_PARAM = "quizId"
+const QUESTION_ID_URL_PARAM = "questionId"
+
 
 type UserIdKey struct{}
 type CoupleIdKey struct{}
@@ -100,18 +102,25 @@ func (m *Middlewares) CheckUserQuizPermissions(handler http.Handler) http.Handle
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			quizId := chi.URLParam(r, QUIZ_ID_URL_PARAM)
-			quizParsed, err := uuid.Parse(quizId)
-			if err != nil{
-				utils.WriteError(w, http.StatusBadRequest, utils.ErrEmptyQuizId)
-				return 
+			questionId := chi.URLParam(r, QUESTION_ID_URL_PARAM)
+			var parsedQuizId *uuid.UUID = nil
+			var parsedQuestionId *uuid.UUID = nil
+			if quizId != ""{
+				parsed, err := uuid.Parse(quizId)
+				if err != nil{
+					parsedQuizId = &parsed
+				}
+			}else if questionId != ""{
+				parsed, err := uuid.Parse(questionId)
+				if err != nil{
+					parsedQuestionId = &parsed
+				}
 			}
-
+			
 			userId, _ := r.Context().Value(UserIdKey{}).(uuid.UUID)
 			
-			quiz, _ := m.quizzService.GetQuizById(r.Context(), quizParsed)
-			if quiz == nil || quiz.CreatorId == nil || userId != *quiz.CreatorId{
-				log.Print("user attempt to modify other quiz")
-				utils.WriteError(w, http.StatusUnauthorized, ErrUnathorized)
+			if err := m.quizzService.AuthorizeQuizCreator(r.Context(), parsedQuizId, parsedQuestionId, userId); err != nil{
+				utils.WriteError(w, http.StatusUnauthorized, err)
 				return 
 			}
 			handler.ServeHTTP(w, r)

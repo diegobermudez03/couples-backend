@@ -12,4 +12,5 @@ var (
 	ErrEmptyCategoryId = errors.New("EMPTY_CATEGORY_ID")
 	ErrEmptyQuizId = errors.New("EMPTY_QUIZ_ID")
 	ErrEmptyQuestionId = errors.New("EMPTY_QUESTION_ID")
+	ErrUnableToAuthorize = errors.New("UNABLE_TO_AUTHORIZE")
 )
