@@ -14,6 +14,7 @@ import (
 
 const CAT_ID_URL_PARAM = "catId"
 const QUIZ_ID_URL_PARAM = "quizId"
+const QUESTION_ID_URL_PARAM = "questionId"
 
 type QuizzesHandler struct {
 	service     quizzes.UserService
@@ -37,17 +38,28 @@ func (h *QuizzesHandler) RegisterRoutes(r *chi.Mux) {
 
 	r.Mount("/quizzes", routerUsers)
 
-	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Post(fmt.Sprintf("/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
+	//	quiz handlers
 	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Patch(fmt.Sprintf("/{%s}", QUIZ_ID_URL_PARAM), h.patchQuizHandler)
+	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Delete(fmt.Sprintf("/{%s}", QUIZ_ID_URL_PARAM), h.deleteQuiz)
 	routerUsers.Post("/", h.postQuiz)
+	// 	question handlers
+	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Post(fmt.Sprintf("/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
+	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Delete(fmt.Sprintf("/questions/{%s}", QUESTION_ID_URL_PARAM), h.deleteQuestion)
 
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	r.Mount("/admin/quizzes", routerAdmin)
 
+	//	categories handlers
 	routerAdmin.Post("/categories", h.postAdminQuizCategory)
 	routerAdmin.Patch(fmt.Sprintf("/categories/{%s}", CAT_ID_URL_PARAM), h.patchAdminQuizCategory)
+	routerAdmin.Delete(fmt.Sprintf("/categories/{%s}", CAT_ID_URL_PARAM), h.deleteCategory)
+	//	quiz handlers
 	routerAdmin.Post(fmt.Sprintf("/categories/{%s}/quizzes", CAT_ID_URL_PARAM), h.postQuiz)
 	routerAdmin.Patch(fmt.Sprintf("/{%s}", QUIZ_ID_URL_PARAM), h.patchQuizHandler)
+	routerAdmin.Delete(fmt.Sprintf("/{%s}", QUIZ_ID_URL_PARAM), h.deleteQuiz)
+	//question handlers
 	routerAdmin.Post(fmt.Sprintf("/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
+	routerAdmin.Delete(fmt.Sprintf("/questions/{%s}", QUESTION_ID_URL_PARAM), h.deleteQuestion)
 }
 
 
@@ -277,6 +289,53 @@ func (h *QuizzesHandler) postQuestionHandler(w http.ResponseWriter, r *http.Requ
 	utils.WriteJSON(w, http.StatusCreated, nil)
 }
 
+
+func (h *QuizzesHandler) deleteCategory(w http.ResponseWriter, r *http.Request){
+	auxId := chi.URLParam(r, CAT_ID_URL_PARAM)
+	catId, err := uuid.Parse(auxId)
+	if err != nil{
+		utils.WriteError(w, http.StatusBadRequest, utils.ErrEmptyQuestionId)
+		return
+	}
+	if err := h.adminService.DeleteQuizCategory(r.Context(), catId); err != nil{
+		code := utils.GetErrorCode(err, quizzessErrorCodes, 500)
+		utils.WriteError(w, code, err)
+		return 
+	}
+	utils.WriteJSON(w, http.StatusOK, nil )
+}
+
+
+func (h *QuizzesHandler) deleteQuiz(w http.ResponseWriter, r *http.Request){
+	auxId := chi.URLParam(r, QUIZ_ID_URL_PARAM)
+	quizId, err := uuid.Parse(auxId)
+	if err != nil{
+		utils.WriteError(w, http.StatusBadRequest, utils.ErrEmptyQuestionId)
+		return
+	}
+	if err := h.service.DeleteQuiz(r.Context(), quizId); err != nil{
+		code := utils.GetErrorCode(err, quizzessErrorCodes, 500)
+		utils.WriteError(w, code, err)
+		return 
+	}
+	utils.WriteJSON(w, http.StatusOK, nil )
+}
+
+
+func (h *QuizzesHandler) deleteQuestion(w http.ResponseWriter, r *http.Request){
+	auxId := chi.URLParam(r, QUESTION_ID_URL_PARAM)
+	questionId, err := uuid.Parse(auxId)
+	if err != nil{
+		utils.WriteError(w, http.StatusBadRequest, utils.ErrEmptyQuestionId)
+		return
+	}
+	if err := h.service.DeleteQuestion(r.Context(), questionId); err != nil{
+		code := utils.GetErrorCode(err, quizzessErrorCodes, 500)
+		utils.WriteError(w, code, err)
+		return 
+	}
+	utils.WriteJSON(w, http.StatusOK, nil )
+}
 
 //////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////

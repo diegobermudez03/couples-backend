@@ -126,9 +126,9 @@ func (r *QuizzesPostgresRepo) CreateQuestion(ctx context.Context, model *quizzes
 	executor := infraestructure.GetDBContext(ctx, r.db)
 	result, err := executor.ExecContext(
 		ctx, 
-		`INSERT INTO quiz_questions(id, ordering, question, question_type, options_json, quiz_id, strategic_answer_id)
-		VALUES($1, $2, $3, $4, $5, $6, $7)`,
-		model.Id, model.Ordering, model.Question, model.QuestionType, model.OptionsJson, model.QuizId, model.StrategicAnswerId,
+		`INSERT INTO quiz_questions(id, ordering, question, question_type, options_json, quiz_id, strategic_answer_id, active)
+		VALUES($1, $2, $3, $4, $5, $6, $7, $8)`,
+		model.Id, model.Ordering, model.Question, model.QuestionType, model.OptionsJson, model.QuizId, model.StrategicAnswerId, model.Active,
 	)
 	if err != nil{
 		return 0, err 

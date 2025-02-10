@@ -170,6 +170,7 @@ func (s *UserService) CreateQuestion(ctx context.Context, quizId uuid.UUID, para
 		Question: parameters.Question,
 		QuestionType: parameters.QType,
 		QuizId: quizId,
+		Active: true,
 	}
 
 	//create strategic question if needed
@@ -205,7 +206,52 @@ func (s *UserService) CreateQuestion(ctx context.Context, quizId uuid.UUID, para
 	return nil
 }
 
+func (s *UserService) DeleteQuestion(ctx context.Context, questionId uuid.UUID) error{
+	count, err := s.repo.GetUsersAnswersCountByQuestionId(ctx, questionId)
+	if err != nil{
+		return quizzes.ErrDeletingQuestion
+	}
 
+	var num int 
+	if count == 0{
+		num, err = s.repo.DeleteQuestions(ctx, quizzes.QuestionFilter{Id: &questionId})
+	}else{
+		num, err = s.repo.SoftDeleteQuestions(ctx, quizzes.QuestionFilter{Id: &questionId})
+	}
+
+	if err != nil || num == 0{ 
+		return quizzes.ErrDeletingQuestion
+	}
+	return nil
+}
+
+
+func (s *UserService) DeleteQuiz(ctx context.Context, quizId uuid.UUID) error{
+	count, err := s.repo.GetQuizzesPlayedCount(ctx, quizzes.QuizPlayedFilter{QuizId: &quizId})
+	if err != nil{
+		return quizzes.ErrDeletingQuiz
+	}
+	var num int 
+	if count == 0{
+		questions, auxErr := s.repo.GetQuestionsByQuizId(ctx, quizId)
+		if auxErr != nil{
+			return quizzes.ErrDeletingQuiz
+		}
+		for _, q := range questions{
+			_, auxErr := s.repo.DeleteUsersAnswers(ctx, quizzes.UserAnswerFilter{QuestionId: &q.Id})
+			if auxErr != nil{
+				return quizzes.ErrDeletingQuiz
+			}
+		}
+		num, err = s.repo.DeleteQuestions(ctx, quizzes.QuestionFilter{QuizId: &quizId})
+	}else{
+		num, err = s.repo.SoftDeleteQuizById(ctx, quizId)
+	}
+	if num == 0 || err != nil{
+		return quizzes.ErrDeletingQuiz
+	}
+	return nil 
+}
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

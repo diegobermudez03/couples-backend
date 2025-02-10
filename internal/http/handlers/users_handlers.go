@@ -80,7 +80,7 @@ func (h *UsersHandler) PatchPartnersNickNameEndpoint(w http.ResponseWriter, r *h
 	}
 
 	if err := h.service.EditPartnersNickname(r.Context(), userId, coupleId, payload.Nickname); err != nil{
-		code := utils.GetErrorCode(err, authErrorCodes, 500)
+		code := utils.GetErrorCode(err, usersErrorCodes, 500)
 		utils.WriteError(w, code, err)
 		return 
 	}

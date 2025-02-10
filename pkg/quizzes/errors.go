@@ -19,4 +19,7 @@ var (
 	ErrCreatingQuestion = errors.New("UNABLE_TO_CREATE_QUESTION")
 	ErrRetrievingQuiz = errors.New("UNABLE_TO_GET_QUIZ")
 	ErrInvalidQuestionOptions = errors.New("INVALID_QUESTION_OPTIONS")
+	ErrDeletingCategory = errors.New("UNABLE_TO_DELETE_CATEGORY")
+	ErrDeletingQuestion  = errors.New("UNABLE_TO_DELETE_QUESTION")
+	ErrDeletingQuiz = errors.New("UNABLE_TO_DELETE_QUIZ")
 )

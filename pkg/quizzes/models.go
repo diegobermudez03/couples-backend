@@ -45,6 +45,7 @@ type QuestionPlainModel struct{
 	QuestionType 	string 
 	OptionsJson  	string 
 	QuizId 			uuid.UUID
+	Active 			bool
 	StrategicAnswerId 	*uuid.UUID
 }
 
@@ -53,4 +54,22 @@ type StrategicAnswerModel struct{
 	Id 				uuid.UUID 
 	Name 			string 
 	Description 	string
+}
+
+type UserAnswerPlainModel struct{
+	Id 			uuid.UUID
+	UserId 		uuid.UUID
+	QuestionId 	uuid.UUID
+	Answers 	string 
+	AnsweredAt 	time.Time
+}
+
+type QuizPlayedPlainModel struct{
+	Id 		uuid.UUID
+	QuizId 	uuid.UUID
+	UserId 	uuid.UUID
+	Shared 	bool 
+	Score 	*int
+	StartedAt 	time.Time
+	CompletedAt *time.Time 
 }

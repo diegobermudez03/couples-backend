@@ -99,3 +99,23 @@ func (s *AdminServiceImpl) UpdateQuizCategory(ctx context.Context, id uuid.UUID,
 	waitGroup.Wait()
 	return nil
 }
+
+
+func (s *AdminServiceImpl) DeleteQuizCategory(ctx context.Context, catId uuid.UUID) error{
+	quizs, err := s.quizzesRepo.GetQuizzesByCategoryId(ctx, catId)
+	if err != nil{
+		return quizzes.ErrDeletingCategory
+	}
+
+	var num int
+	if quizs == nil || len(quizs) == 0{
+		num, err = s.quizzesRepo.DeleteCategoryById(ctx, catId)
+	}else{
+		num, err = s.quizzesRepo.SoftDeleteCategoryById(ctx, catId)
+	}
+
+	if num == 0 || err != nil{
+		return quizzes.ErrDeletingCategory
+	}
+	return nil
+}

@@ -11,4 +11,5 @@ var (
 	ErrInvalidId = errors.New("INVALID_ID")
 	ErrEmptyCategoryId = errors.New("EMPTY_CATEGORY_ID")
 	ErrEmptyQuizId = errors.New("EMPTY_QUIZ_ID")
+	ErrEmptyQuestionId = errors.New("EMPTY_QUESTION_ID")
 )

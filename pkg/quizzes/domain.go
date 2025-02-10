@@ -10,9 +10,8 @@ import (
 type AdminService interface {
 	CreateQuizCategory(ctx context.Context, name, description string, image io.Reader) error
 	UpdateQuizCategory(ctx context.Context, id uuid.UUID, name, description string, image io.Reader) error
-	//DeleteQuizCategory(ctx context.Context, id uuid.UUID) error
+	DeleteQuizCategory(ctx context.Context, id uuid.UUID) error
 }
-
 
 type CreateQuestionRequest struct{
 	Question 		string 
@@ -24,30 +23,13 @@ type CreateQuestionRequest struct{
 }
 
 type UserService interface{
+	GetQuizById(ctx context.Context, quizId uuid.UUID)(*QuizPlainModel, error)
 	CreateQuiz(ctx context.Context, name, description, languageCode string, categoryId, userId *uuid.UUID, image io.Reader) error
 	UpdateQuiz(ctx context.Context, quizId uuid.UUID, name, description, languageCode string, categoryId *uuid.UUID, image io.Reader) error
+	DeleteQuiz(ctx context.Context, quizId uuid.UUID) error
+
 	CreateQuestion(ctx context.Context, quizId uuid.UUID, parameters CreateQuestionRequest, images map[string]io.Reader) error
-	GetQuizById(ctx context.Context, quizId uuid.UUID)(*QuizPlainModel, error)
-}
-
-type QuizzesRepository interface{
-	GetCategoryByName(ctx context.Context, name string)(*QuizCatPlainModel, error)
-	GetCategoryById(ctx context.Context, id uuid.UUID)(*QuizCatPlainModel, error)
-	CreateCategory(ctx context.Context, category *QuizCatPlainModel) (int, error)
-	UpdateCategory(ctx context.Context, category *QuizCatPlainModel) (int, error)
-
-	GetQuizById(ctx context.Context, id uuid.UUID) (*QuizPlainModel, error)
-	CreateQuiz(ctx context.Context, quiz *QuizPlainModel) (int, error)
-	UpdateQuiz(ctx context.Context, quiz *QuizPlainModel) (int, error)
-
-
-	//GetQuestionsFromQuizId(ctx context.Context, quizId uuid.UUID) ([]QuestionPlainModel, error)
-	GetMaxOrderQuestionFromQuiz(ctx context.Context, quizId uuid.UUID) (int, error)
-	CreateQuestion(ctx context.Context, model *QuestionPlainModel) (int, error)
-
-	GetStrategicTypeAnswerById(ctx context.Context, id uuid.UUID) (*StrategicAnswerModel, error)
-	CreateStrategicTypeAnswer(ctx context.Context, model *StrategicAnswerModel) (int, error)
-
+	DeleteQuestion(ctx context.Context, questionId uuid.UUID) error
 }
 
 

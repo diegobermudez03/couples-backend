@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS quiz_questions(
     question            TEXT NOT NULL,
     question_type       TEXT NOT NULL,
     options_json        JSONB NOT NULL,
+    active          BOOLEAN NOT NULL,
     quiz_id             UUID REFERENCES quizzes(id) NOT NULL,
     strategic_answer_id    UUID REFERENCES strategic_type_answers(id)
 );
@@ -41,8 +42,7 @@ CREATE TABLE IF NOT EXISTS user_answers(
     id              UUID PRIMARY KEY,
     user_id         UUID REFERENCES users(id) NOT NULL,
     question_id     UUID REFERENCES quiz_questions(id) NOT NULL,
-    own_answer      TEXT NOT NULL,
-    partner_answer  TEXT NOT NULL,
+    answers         TEXT NOT NULL,
     answered_at     TIMESTAMP NOT NULL
 );
 
