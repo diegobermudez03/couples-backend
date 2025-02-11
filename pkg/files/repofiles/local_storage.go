@@ -43,6 +43,15 @@ func (r *LocalStorage) GetFile(ctx context.Context, path string) (*os.File, erro
 	return file, nil
 }
 
+func (r *LocalStorage) DeleteFile(ctx context.Context, bucket, group, objectKey string) error{
+	path := r.getPath(bucket, group)
+	err := os.Remove(filepath.Join(path, objectKey))
+	if err != nil{
+		return err 
+	}
+	return nil
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////

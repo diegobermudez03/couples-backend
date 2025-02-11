@@ -16,6 +16,7 @@ import (
 )
 
 type QuestionOptionsCreator func(ctx context.Context, quiz *quizzes.QuizPlainModel, inputOptions string, images map[string]io.Reader, questionId uuid.UUID) (string, error)
+type QuestionDeletor func(ctx context.Context, question *quizzes.QuestionPlainModel) error
 
 type UserService struct{
 	transactions 	infraestructure.Transaction
@@ -23,6 +24,7 @@ type UserService struct{
 	loacalizationService localization.LocalizationService
 	repo 			quizzes.QuizzesRepository
 	creators 		map[string]QuestionOptionsCreator
+	deletors 		map[string]QuestionDeletor
 	jsonValidator 	*validator.Validate
 }
 
@@ -47,6 +49,15 @@ func NewUserService(
 		quizzes.MULTIPLE_CH_TYPE : service.multipleChCreator,
 		quizzes.MATCHING_TYPE : service.matchingCreator,
 		quizzes.DRAG_AND_DROP_TYPE : service.dragAndDropCreator,
+	}
+	service.deletors = map[string]QuestionDeletor{
+		quizzes.TRUE_FALSE_TYPE : service.deleteTrueFalse,
+		quizzes.SLIDER_TYPE : service.deleteSlider,
+		quizzes.ORDERING_TYPE : service.deleteOrdering,
+		quizzes.OPEN_TYPE : service.deleteOpen,
+		quizzes.MULTIPLE_CH_TYPE : service.deleteMultipleCh,
+		quizzes.MATCHING_TYPE : service.deleteMatching,
+		quizzes.DRAG_AND_DROP_TYPE : service.deleteDragAndDrop,
 	}
 	return service
 }
@@ -224,6 +235,10 @@ func (s *UserService) CreateQuestion(ctx context.Context, quizId uuid.UUID, para
 }
 
 func (s *UserService) DeleteQuestion(ctx context.Context, questionId uuid.UUID) error{
+	question, err := s.repo.GetQuestionById(ctx, questionId)
+	if err  != nil || question == nil{
+		return quizzes.ErrDeletingQuestion
+	}
 	count, err := s.repo.GetUsersAnswersCount(ctx, quizzes.UserAnswerFilter{QuestionId: &questionId})
 	if err != nil{
 		return quizzes.ErrDeletingQuestion
@@ -231,9 +246,16 @@ func (s *UserService) DeleteQuestion(ctx context.Context, questionId uuid.UUID) 
 
 	var num int 
 	if count == 0{
-		log.Print("deleting")
-		num, err = s.repo.DeleteQuestions(ctx, quizzes.QuestionFilter{Id: &questionId})
-		log.Print("after deleting")
+		err = s.transactions.Do(ctx, func(ctx context.Context) error {
+			if err := s.deletors[question.QuestionType](ctx, question); err != nil{
+				return err
+			}
+			num, err = s.repo.DeleteQuestions(ctx, quizzes.QuestionFilter{Id: &question.Id})
+			if num == 0 || err != nil{
+				return quizzes.ErrDeletingQuestion
+			}
+			return nil
+		})
 	}else{
 		num, err = s.repo.SoftDeleteQuestions(ctx, quizzes.QuestionFilter{Id: &questionId})
 	}
@@ -246,6 +268,10 @@ func (s *UserService) DeleteQuestion(ctx context.Context, questionId uuid.UUID) 
 
 
 func (s *UserService) DeleteQuiz(ctx context.Context, quizId uuid.UUID) error{
+	quiz, err := s.repo.GetQuizById(ctx, quizId)
+	if err != nil || quiz == nil{
+		return quizzes.ErrQuizNotFound
+	}
 	count, err := s.repo.GetQuizzesPlayedCount(ctx, quizzes.QuizPlayedFilter{QuizId: &quizId})
 	if err != nil{
 		return quizzes.ErrDeletingQuiz
@@ -262,9 +288,11 @@ func (s *UserService) DeleteQuiz(ctx context.Context, quizId uuid.UUID) error{
 				if auxErr != nil{
 					return quizzes.ErrDeletingQuiz
 				}
+				if err := s.DeleteQuestion(ctx, q.Id); err != nil{
+					return quizzes.ErrDeletingQuiz
+				}
 			}
-			num, err = s.repo.DeleteQuestions(ctx, quizzes.QuestionFilter{QuizId: &quizId})
-			if err != nil {
+			if err := s.fileService.DeleteImage(ctx, *quiz.ImageId); err != nil{
 				return quizzes.ErrDeletingQuiz
 			}
 			num, err = s.repo.DeleteQuizById(ctx, quizId)

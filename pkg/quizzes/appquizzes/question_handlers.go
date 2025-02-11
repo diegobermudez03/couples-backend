@@ -84,6 +84,11 @@ type dragAndDropOptionsFormat struct{
 
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///// 			CREATORS 			//////
 
 func (s *UserService) trueFalseCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error) {
 	return "{}", nil
@@ -205,6 +210,74 @@ func (s *UserService) dragAndDropCreator(ctx context.Context, quiz *quizzes.Quiz
 	return string(jsonBytes), nil
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///// 			DELETORS 			//////
+
+func (s *UserService)  deleteTrueFalse(ctx context.Context, question *quizzes.QuestionPlainModel) error{
+	return nil
+}
+
+func (s *UserService)  deleteSlider(ctx context.Context, question *quizzes.QuestionPlainModel) error{
+	return nil
+}
+
+func (s *UserService)  deleteOpen(ctx context.Context, question *quizzes.QuestionPlainModel) error{
+	return nil
+}
+
+func (s *UserService)  deleteOrdering(ctx context.Context, question *quizzes.QuestionPlainModel) error{
+	var options orderingOptionsFormat
+	if err := json.Unmarshal([]byte(question.OptionsJson), &options); err != nil{
+		return quizzes.ErrDeletingQuestion
+	}
+	if err := s.deleteOptionsImages(ctx,options.Options); err != nil{
+		return quizzes.ErrDeletingQuestion
+	}
+	return nil
+}
+
+func (s *UserService)  deleteMultipleCh(ctx context.Context, question *quizzes.QuestionPlainModel) error{
+	var options multipleOptionsFormat
+	if err := json.Unmarshal([]byte(question.OptionsJson), &options); err != nil{
+		return quizzes.ErrDeletingQuestion
+	}
+	if err := s.deleteOptionsImages(ctx,options.Options); err != nil{
+		return quizzes.ErrDeletingQuestion
+	}
+	return nil
+}
+
+func (s *UserService)  deleteMatching(ctx context.Context, question *quizzes.QuestionPlainModel) error{
+	var options matchingOptionsFormat
+	if err := json.Unmarshal([]byte(question.OptionsJson), &options); err != nil{
+		return quizzes.ErrDeletingQuestion
+	}
+	if err := s.deleteOptionsImages(ctx,options.Options1); err != nil{
+		return quizzes.ErrDeletingQuestion
+	}
+	if err := s.deleteOptionsImages(ctx,options.Options2); err != nil{
+		return quizzes.ErrDeletingQuestion
+	}
+	return nil
+}
+
+func (s *UserService)  deleteDragAndDrop(ctx context.Context, question *quizzes.QuestionPlainModel) error{
+	var options matchingOptionsFormat
+	if err := json.Unmarshal([]byte(question.OptionsJson), &options); err != nil{
+		return quizzes.ErrDeletingQuestion
+	}
+	if err := s.deleteOptionsImages(ctx,options.Options1); err != nil{
+		return quizzes.ErrDeletingQuestion
+	}
+	if err := s.deleteOptionsImages(ctx,options.Options2); err != nil{
+		return quizzes.ErrDeletingQuestion
+	}
+	return nil
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -246,4 +319,16 @@ func (s *UserService) readOptions(ctx context.Context, inputOptions []inputOptio
 	}
 	waitGroup.Wait()
 	return outputOptions
+}
+
+
+func (s *UserService) deleteOptionsImages(ctx context.Context, options []questionOption) error{
+	for _, opt := range options{
+		if opt.ImageId != nil{
+			if err := s.fileService.DeleteImage(ctx, *opt.ImageId); err != nil{
+				return quizzes.ErrDeletingQuestion
+			}
+		}
+	}
+	return nil
 }

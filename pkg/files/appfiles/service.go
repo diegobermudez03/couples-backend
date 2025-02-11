@@ -104,6 +104,17 @@ func (s *FilesServiceImpl) GetImage(ctx context.Context, path string) (*os.File,
 	return file, files.JPG_TYPE, nil
 }
 
+func (s *FilesServiceImpl) DeleteImage(ctx context.Context, imageId uuid.UUID) error{
+	file, err := s.dbRepo.GetFileById(ctx, imageId)
+	if err != nil || file == nil{
+		return files.ErrDeletingImage
+	}
+	if err := s.filesRepo.DeleteFile(ctx, file.Bucket, file.Group, file.ObjectKey); err != nil{
+		return  files.ErrDeletingImage
+	}
+	return nil
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

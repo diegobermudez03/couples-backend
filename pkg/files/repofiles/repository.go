@@ -49,3 +49,13 @@ func (r *FilesPostgresRepo) GetFileById(ctx context.Context, id uuid.UUID) (*fil
 	}
 	return model, nil
 }
+
+func (r *FilesPostgresRepo) DeleteFileById(ctx context.Context, id uuid.UUID) (int, error){
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return ex.ExecContext(
+			ctx,
+			`DELETE FROM files WHERE id = $1`,
+			id,  
+		)
+	})
+}

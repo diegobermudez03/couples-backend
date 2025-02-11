@@ -10,19 +10,21 @@ import (
 	"time"
 
 	"github.com/diegobermudez03/couples-backend/pkg/files"
+	"github.com/diegobermudez03/couples-backend/pkg/infraestructure"
 	"github.com/diegobermudez03/couples-backend/pkg/localization"
 	"github.com/diegobermudez03/couples-backend/pkg/quizzes"
 	"github.com/google/uuid"
 )
 
 type AdminServiceImpl struct {
+	transactions 	infraestructure.Transaction
 	filesService 	files.Service
 	loacalizationService localization.LocalizationService
 	quizzesRepo 	quizzes.QuizzesRepository
 
 }
 
-func NewAdminServiceImpl(filesService files.Service, loacalizationService localization.LocalizationService,  quizzesRepo quizzes.QuizzesRepository) quizzes.AdminService{
+func NewAdminServiceImpl(transactions infraestructure.Transaction, filesService files.Service, loacalizationService localization.LocalizationService,  quizzesRepo quizzes.QuizzesRepository) quizzes.AdminService{
 	return &AdminServiceImpl{
 		filesService: filesService,
 		quizzesRepo: quizzesRepo,
@@ -72,7 +74,7 @@ func (s *AdminServiceImpl) UpdateQuizCategory(ctx context.Context, id uuid.UUID,
 	if err != nil{
 		return quizzes.ErrUpdatingCategory
 	} else if cat == nil{
-		return quizzes.ErrNonExistingCategory
+		return quizzes.ErrCategoryNotFound
 	}
 
 	waitGroup := sync.WaitGroup{}
@@ -102,20 +104,28 @@ func (s *AdminServiceImpl) UpdateQuizCategory(ctx context.Context, id uuid.UUID,
 
 
 func (s *AdminServiceImpl) DeleteQuizCategory(ctx context.Context, catId uuid.UUID) error{
+	category, err := s.quizzesRepo.GetCategoryById(ctx, catId)
+	if err != nil || category == nil{
+		return quizzes.ErrCategoryNotFound
+	}
 	quizs, err := s.quizzesRepo.GetQuizzes(ctx, quizzes.QuizFilter{CategoryId: &catId})
 	if err != nil{
 		return quizzes.ErrDeletingCategory
 	}
 
-	var num int
-	if quizs == nil || len(quizs) == 0{
-		num, err = s.quizzesRepo.DeleteCategoryById(ctx, catId)
-	}else{
-		num, err = s.quizzesRepo.SoftDeleteCategoryById(ctx, catId)
-	}
-
-	if num == 0 || err != nil{
-		return quizzes.ErrDeletingCategory
-	}
-	return nil
+	return s.transactions.Do(ctx, func(ctx context.Context) error {
+		var num int
+		if len(quizs) == 0{
+			num, err = s.quizzesRepo.DeleteCategoryById(ctx, catId)
+		}else{
+			num, err = s.quizzesRepo.SoftDeleteCategoryById(ctx, catId)
+		}
+		if num == 0 || err != nil{
+			return quizzes.ErrDeletingCategory
+		}
+		if err := s.filesService.DeleteImage(ctx, category.ImageId); err != nil{
+			return quizzes.ErrDeletingCategory
+		}
+		return nil
+	})
 }

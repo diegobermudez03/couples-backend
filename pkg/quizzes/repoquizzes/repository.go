@@ -310,12 +310,12 @@ func (r *QuizzesPostgresRepo) GetUsersAnswersCount(ctx context.Context, filter q
 	return count, nil
 }
 
-func (r *QuizzesPostgresRepo) GetQuestionById(ctx context.Context, quizId uuid.UUID) (*quizzes.QuestionPlainModel, error){
+func (r *QuizzesPostgresRepo) GetQuestionById(ctx context.Context, questionId uuid.UUID) (*quizzes.QuestionPlainModel, error){
 	row := r.db.QueryRowContext(
 		ctx, 
 		`SELECT id, ordering, question, question_type, options_json, active, quiz_id, strategic_answer_id
 		FROM quiz_questions WHERE active=TRUE AND id=$1`,
-		quizId,
+		questionId,
 	)
 	return r.rowToQuestion(row)
 }

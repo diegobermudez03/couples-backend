@@ -99,7 +99,7 @@ func (s *APIServer) injectDependencies(router *chi.Mux){
 	usersService := appusers.NewUsersServiceImpl(localizationService, usersRepository)
 	authService := appauth.NewAuthService(transactions, authRepository, usersService, s.config.AuthConfig.AccessTokenLife, s.config.AuthConfig.RefreshTokenLife, s.config.AuthConfig.JwtSecret)
 	authAdminService := appauth.NewAdminAuthService(authRepository, s.config.AuthConfig.JwtSecret, s.config.AuthConfig.AccessTokenLife)
-	quizzesAdminService := appquizzes.NewAdminServiceImpl(filesService, localizationService,quizzesRepository)
+	quizzesAdminService := appquizzes.NewAdminServiceImpl(transactions, filesService, localizationService,quizzesRepository)
 	quizzesUserService := appquizzes.NewUserService(transactions,filesService, localizationService,quizzesRepository)
 
 	//middlewares
