@@ -25,6 +25,7 @@ type QuizzesRepository interface {
 	GetQuestions(ctx context.Context, filter QuestionFilter) ([]QuestionPlainModel, error)
 	GetQuestionById(ctx context.Context, questionId uuid.UUID) (*QuestionPlainModel, error)
 	CreateQuestion(ctx context.Context, model *QuestionPlainModel) (int, error)
+	UpdateQuestion(ctx context.Context, model *QuestionPlainModel) (int, error)
 	DeleteQuestions(ctx context.Context, filter QuestionFilter) (int, error)
 	SoftDeleteQuestions(ctx context.Context, filter QuestionFilter) (int, error)
 

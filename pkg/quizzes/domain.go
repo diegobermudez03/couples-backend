@@ -22,6 +22,14 @@ type CreateQuestionRequest struct{
 	StrategicDescription *string 
 }
 
+type UpdateQuestionRequest struct{
+	Question 			*string 
+	OptionsJson			map[string]any 
+	StrategicAnswerId 	*uuid.UUID
+	StrategicName 		*string 
+	StrategicDescription *string 
+}
+
 type UserService interface{
 	AuthorizeQuizCreator(ctx context.Context, quizId *uuid.UUID, questionId *uuid.UUID, userId uuid.UUID) error
 	
@@ -30,6 +38,7 @@ type UserService interface{
 	DeleteQuiz(ctx context.Context, quizId uuid.UUID) error
 
 	CreateQuestion(ctx context.Context, quizId uuid.UUID, parameters CreateQuestionRequest, images map[string]io.Reader) error
+	UpdateQuestion(ctx context.Context, questionId uuid.UUID, parameters UpdateQuestionRequest, images map[string]io.Reader) error
 	DeleteQuestion(ctx context.Context, questionId uuid.UUID) error
 }
 

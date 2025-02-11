@@ -90,15 +90,15 @@ type dragAndDropOptionsFormat struct{
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///// 			CREATORS 			//////
 
-func (s *UserService) trueFalseCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error) {
+func (s *UserService) trueFalseCreator(ctx context.Context, quizId uuid.UUID, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error) {
 	return "{}", nil
 }
 
-func (s *UserService) sliderCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error) {
+func (s *UserService) sliderCreator(ctx context.Context, quizId uuid.UUID, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error) {
 	return "{}", nil
 }
 
-func (s *UserService) orderingCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error) {
+func (s *UserService) orderingCreator(ctx context.Context, quizId uuid.UUID, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error) {
 	var input orderingInput
 	if err := s.readJson(optionsJSON, &input); err != nil{
 		return "", quizzes.ErrInvalidQuestionOptions
@@ -113,7 +113,7 @@ func (s *UserService) orderingCreator(ctx context.Context, quiz *quizzes.QuizPla
 	output.SortingType = input.SortingType
 
 	output.Options = make([]questionOption, 0, len(input.Options))
-	output.Options = s.readOptions(ctx, input.Options, output.Options, images, quiz.Id,questionId)
+	output.Options = s.readOptions(ctx, input.Options, output.Options, images, quizId,questionId)
 
 	jsonBytes, err := json.Marshal(output)
 	if err != nil{
@@ -124,7 +124,7 @@ func (s *UserService) orderingCreator(ctx context.Context, quiz *quizzes.QuizPla
 
 
 
-func (s *UserService) openCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error) {
+func (s *UserService) openCreator(ctx context.Context, quizId uuid.UUID, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error) {
 	var input openInput
 	if err := s.readJson(optionsJSON, &input); err != nil{
 		return "", quizzes.ErrInvalidQuestionOptions
@@ -141,7 +141,7 @@ func (s *UserService) openCreator(ctx context.Context, quiz *quizzes.QuizPlainMo
 }
 
 
-func (s *UserService) multipleChCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error) {
+func (s *UserService) multipleChCreator(ctx context.Context, quizId uuid.UUID, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error) {
 	var input multipleInput
 	if err := s.readJson(optionsJSON, &input); err != nil{
 		return "", quizzes.ErrInvalidQuestionOptions
@@ -155,7 +155,7 @@ func (s *UserService) multipleChCreator(ctx context.Context, quiz *quizzes.QuizP
 	}
 
 	output.Options = make([]questionOption, 0, len(input.Options))
-	output.Options = s.readOptions(ctx, input.Options, output.Options, images, quiz.Id, questionId)
+	output.Options = s.readOptions(ctx, input.Options, output.Options, images, quizId, questionId)
 
 	jsonBytes, err := json.Marshal(output)
 	if err != nil{
@@ -165,7 +165,7 @@ func (s *UserService) multipleChCreator(ctx context.Context, quiz *quizzes.QuizP
 }
 
 
-func (s *UserService) matchingCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error) {
+func (s *UserService) matchingCreator(ctx context.Context, quizId uuid.UUID, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error) {
 	var input matchingInput
 	if err := s.readJson(optionsJSON, &input); err != nil{
 		return "", quizzes.ErrInvalidQuestionOptions
@@ -179,8 +179,8 @@ func (s *UserService) matchingCreator(ctx context.Context, quiz *quizzes.QuizPla
 
 	output.Options1 = make([]questionOption, 0, numberOptions)
 	output.Options1 = make([]questionOption, 0,  numberOptions)
-	output.Options1 = s.readOptions(ctx, input.Options1, output.Options1, images, quiz.Id, questionId)
-	output.Options2 = s.readOptions(ctx, input.Options2, output.Options1, images, quiz.Id, questionId)
+	output.Options1 = s.readOptions(ctx, input.Options1, output.Options1, images, quizId, questionId)
+	output.Options2 = s.readOptions(ctx, input.Options2, output.Options1, images, quizId, questionId)
 	
 	jsonBytes, err := json.Marshal(output)
 	if err != nil{
@@ -190,7 +190,7 @@ func (s *UserService) matchingCreator(ctx context.Context, quiz *quizzes.QuizPla
 }
 
 
-func (s *UserService) dragAndDropCreator(ctx context.Context, quiz *quizzes.QuizPlainModel, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error) {
+func (s *UserService) dragAndDropCreator(ctx context.Context, quizId uuid.UUID, optionsJSON string, images map[string]io.Reader, questionId uuid.UUID) (string, error) {
 	var input dragAndDropInput
 	if err := s.readJson(optionsJSON, &input); err != nil{
 		return "", quizzes.ErrInvalidQuestionOptions
@@ -200,8 +200,8 @@ func (s *UserService) dragAndDropCreator(ctx context.Context, quiz *quizzes.Quiz
 
 	output.Boxes = make([]questionOption,  0, len(input.Boxes))
 	output.Options = make([]questionOption, 0, len(input.Options))
-	output.Boxes = s.readOptions(ctx, input.Boxes, output.Boxes, images, quiz.Id, questionId)
-	output.Options = s.readOptions(ctx, input.Options, output.Options, images, quiz.Id, questionId)
+	output.Boxes = s.readOptions(ctx, input.Boxes, output.Boxes, images, quizId, questionId)
+	output.Options = s.readOptions(ctx, input.Options, output.Options, images, quizId, questionId)
 
 	jsonBytes, err := json.Marshal(output)
 	if err != nil{

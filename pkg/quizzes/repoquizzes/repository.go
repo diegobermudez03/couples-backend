@@ -320,6 +320,17 @@ func (r *QuizzesPostgresRepo) GetQuestionById(ctx context.Context, questionId uu
 	return r.rowToQuestion(row)
 }
 
+func (r *QuizzesPostgresRepo) UpdateQuestion(ctx context.Context, model *quizzes.QuestionPlainModel) (int, error){
+	return infraestructure.ExecSQL(ctx, r.db, func(ex infraestructure.Executor) (sql.Result, error) {
+		return ex.ExecContext(ctx, 
+			`UPDATE quiz_questions 
+			SET question = $1, options_json = $2, strategic_answer_id = $3
+			WHERE id=$4`,
+			model.Question, model.OptionsJson, model.StrategicAnswerId, model.Id,
+		)
+	})
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////

@@ -15,7 +15,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type QuestionOptionsCreator func(ctx context.Context, quiz *quizzes.QuizPlainModel, inputOptions string, images map[string]io.Reader, questionId uuid.UUID) (string, error)
+type QuestionOptionsCreator func(ctx context.Context, quizId uuid.UUID, inputOptions string, images map[string]io.Reader, questionId uuid.UUID) (string, error)
 type QuestionDeletor func(ctx context.Context, question *quizzes.QuestionPlainModel) error
 
 type UserService struct{
@@ -186,7 +186,7 @@ func (s *UserService) CreateQuestion(ctx context.Context, quizId uuid.UUID, para
 	if err != nil{
 		return quizzes.ErrInvalidQuestionOptions
 	}
-	optionsJson, err := creator(ctx, quiz, string(inputOptionsJson), images, questionId)
+	optionsJson, err := creator(ctx, quiz.Id, string(inputOptionsJson), images, questionId)
 	if err != nil{
 		return err
 	}
@@ -307,6 +307,57 @@ func (s *UserService) DeleteQuiz(ctx context.Context, quizId uuid.UUID) error{
 	return nil 
 }
 
+
+func (s *UserService) UpdateQuestion(ctx context.Context, questionId uuid.UUID, parameters quizzes.UpdateQuestionRequest, images map[string]io.Reader) error{
+	question, err := s.repo.GetQuestionById(ctx, questionId)
+	if err != nil{
+		return quizzes.ErrQuestionNotFound
+	}
+	if parameters.Question != nil{
+		question.Question = *parameters.Question
+	}
+	if parameters.StrategicAnswerId != nil{
+		question.StrategicAnswerId = parameters.StrategicAnswerId
+	}else if parameters.StrategicName != nil{
+		var description string
+		if parameters.StrategicDescription != nil{
+			description = *parameters.StrategicDescription
+		}
+		strId := uuid.New()
+		strategicQuestion := quizzes.StrategicAnswerModel{
+			Id: strId,
+			Name: *parameters.StrategicName,
+			Description: description,
+		}
+		num, err := s.repo.CreateStrategicTypeAnswer(ctx, &strategicQuestion)
+		if num != 0  && err == nil{
+			question.StrategicAnswerId = &strId
+		}
+	}
+	if len(parameters.OptionsJson) != 0{
+		count, err := s.repo.GetUsersAnswersCount(ctx, quizzes.UserAnswerFilter{QuestionId: &questionId})
+		if count > 0 || err != nil{
+			return quizzes.ErrCantModifyOptionsOfQuestionWithAnswers
+		}
+
+		if err := s.deletors[question.QuestionType](ctx, question); err != nil{
+			return quizzes.ErrUpdatingQuestion
+		}
+		jsonBytes, err := json.Marshal(parameters.OptionsJson)
+		if err != nil{
+			return quizzes.ErrUpdatingQuestion
+		}
+		options, err := s.creators[question.QuestionType](ctx, question.QuizId, string(jsonBytes), images, questionId)
+		if err != nil{
+			return quizzes.ErrUpdatingQuestion
+		}
+		question.OptionsJson = options
+	}
+	if num, err := s.repo.UpdateQuestion(ctx, question); num == 0 || err != nil{
+		return quizzes.ErrUpdatingQuestion
+	}
+	return nil
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////

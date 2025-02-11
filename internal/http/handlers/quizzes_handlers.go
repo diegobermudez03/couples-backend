@@ -40,11 +40,12 @@ func (h *QuizzesHandler) RegisterRoutes(r *chi.Mux) {
 	r.Mount("/quizzes", routerUsers)
 
 	//	quiz handlers
-	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Patch(fmt.Sprintf("/quiz/{%s}", QUIZ_ID_URL_PARAM), h.patchQuizHandler)
-	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Delete(fmt.Sprintf("/quiz/{%s}", QUIZ_ID_URL_PARAM), h.deleteQuiz)
-	routerUsers.Post("/", h.postQuiz)
+	routerUsers.Post("/quizes", h.postQuiz)
+	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Patch(fmt.Sprintf("/quizes/{%s}", QUIZ_ID_URL_PARAM), h.patchQuizHandler)
+	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Delete(fmt.Sprintf("/quizes/{%s}", QUIZ_ID_URL_PARAM), h.deleteQuiz)
 	// 	question handlers
-	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Post(fmt.Sprintf("/quiz/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
+	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Post(fmt.Sprintf("/quizes/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
+	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Patch(fmt.Sprintf("/questions/{%s}", QUESTION_ID_URL_PARAM), h.patchQuestion)
 	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Delete(fmt.Sprintf("/questions/{%s}", QUESTION_ID_URL_PARAM), h.deleteQuestion)
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -55,11 +56,12 @@ func (h *QuizzesHandler) RegisterRoutes(r *chi.Mux) {
 	routerAdmin.Patch(fmt.Sprintf("/categories/{%s}", CAT_ID_URL_PARAM), h.patchAdminQuizCategory)
 	routerAdmin.Delete(fmt.Sprintf("/categories/{%s}", CAT_ID_URL_PARAM), h.deleteCategory)
 	//	quiz handlers
-	routerAdmin.Post(fmt.Sprintf("/categories/{%s}/quizzes", CAT_ID_URL_PARAM), h.postQuiz)
-	routerAdmin.Patch(fmt.Sprintf("/quiz/{%s}", QUIZ_ID_URL_PARAM), h.patchQuizHandler)
-	routerAdmin.Delete(fmt.Sprintf("/quiz/{%s}", QUIZ_ID_URL_PARAM), h.deleteQuiz)
+	routerAdmin.Post(fmt.Sprintf("/categories/{%s}/quizes", CAT_ID_URL_PARAM), h.postQuiz)
+	routerAdmin.Patch(fmt.Sprintf("/quizes/{%s}", QUIZ_ID_URL_PARAM), h.patchQuizHandler)
+	routerAdmin.Delete(fmt.Sprintf("/quizes/{%s}", QUIZ_ID_URL_PARAM), h.deleteQuiz)
 	//question handlers
-	routerAdmin.Post(fmt.Sprintf("/quiz/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
+	routerAdmin.Post(fmt.Sprintf("/quizes/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
+	routerUsers.Patch(fmt.Sprintf("/questions/{%s}", QUESTION_ID_URL_PARAM), h.patchQuestion)
 	routerAdmin.Delete(fmt.Sprintf("/questions/{%s}", QUESTION_ID_URL_PARAM), h.deleteQuestion)
 }
 
@@ -76,6 +78,14 @@ type postQuestionDTO struct{
 	Question 			string 		`json:"question" validate:"required"`
 	QuestionType		string 		`json:"questionType" validate:"required"`
 	OptionsJson			map[string]any 	`json:"optionsJson"`
+	StrategicAnswerId 	*uuid.UUID	`json:"strategicAnswerId"`
+	StrategicName 		*string 	`json:"strategicName"`
+	StrategicDescription *string	`json:"strategicDescription"`
+}
+
+type patchQuestionDTO struct{
+	Question 			*string	`json:"question"`
+	OptionsJson 		map[string]any `json:"optionsJson"`
 	StrategicAnswerId 	*uuid.UUID	`json:"strategicAnswerId"`
 	StrategicName 		*string 	`json:"strategicName"`
 	StrategicDescription *string	`json:"strategicDescription"`
@@ -338,6 +348,45 @@ func (h *QuizzesHandler) deleteQuestion(w http.ResponseWriter, r *http.Request){
 		return 
 	}
 	utils.WriteJSON(w, http.StatusOK, nil )
+}
+
+func (h *QuizzesHandler) patchQuestion(w http.ResponseWriter, r *http.Request){
+	auxId := chi.URLParam(r, QUESTION_ID_URL_PARAM)
+	questionId, err := uuid.Parse(auxId)
+	if err != nil{
+		utils.WriteError(w, http.StatusBadRequest, utils.ErrEmptyQuestionId)
+		return
+	}
+	const maxSize = 15 << 20 //15MB
+	var payload patchQuestionDTO
+	if err := utils.ParseAndReadMultiPartForm(w, r, maxSize,&payload, "question"); err != nil{
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return 
+	}
+
+	//reading all images passed
+	images := map[string]io.Reader{}
+	files := r.MultipartForm.File["images"]
+	for _, header := range files{
+		file, err := header.Open()
+		if err == nil{
+			defer file.Close()
+			images[header.Filename] = file
+		}
+	}
+
+	err = h.service.UpdateQuestion(r.Context(), questionId, quizzes.UpdateQuestionRequest{
+		Question: payload.Question,
+		OptionsJson: payload.OptionsJson,
+		StrategicAnswerId: payload.StrategicAnswerId,
+		StrategicName: payload.StrategicName,
+		StrategicDescription: payload.StrategicDescription,
+	}, images)
+	if err != nil{
+		code := utils.GetErrorCode(err, quizzessErrorCodes, 500)
+		utils.WriteError(w, code, err)
+		return 
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////
