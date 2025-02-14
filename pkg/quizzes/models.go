@@ -17,11 +17,11 @@ type QuizCatPlainModel struct {
 
 
 type QuizCatModel struct {
-	Id 			uuid.UUID
-	Name 		string 
-	Description	string 
-	CreatedAt 	time.Time
-	ImageUrl	string 
+	Id 			uuid.UUID	`json:"id"`
+	Name 		string 		`json:"name"`
+	Description	string 		`json:"description"`
+	CreatedAt 	time.Time	`json:"-"`
+	ImageUrl	string 		`json:"imageUrl"`
 }
 
 

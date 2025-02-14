@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"log"
+	"strings"
 
 	"github.com/diegobermudez03/couples-backend/pkg/files"
 	"github.com/diegobermudez03/couples-backend/pkg/infraestructure"
@@ -58,4 +61,39 @@ func (r *FilesPostgresRepo) DeleteFileById(ctx context.Context, id uuid.UUID) (i
 			id,  
 		)
 	})
+}
+
+
+func (r *FilesPostgresRepo) GetBatchUrls(ctx context.Context, imageIds []uuid.UUID) (map[uuid.UUID]string, error) {
+	ids := strings.Builder{}
+	args := make([]any, len(imageIds))
+
+	for i, id := range imageIds {
+		ids.WriteString(fmt.Sprintf("$%d", i+1)) 
+		args[i] = id                            
+		if i < len(imageIds)-1 {
+			ids.WriteString(",")
+		}
+	}
+
+	query := fmt.Sprintf(`SELECT id, url FROM files WHERE id IN(%s)`, ids.String())
+	log.Println(query)
+	rows, err := r.db.QueryContext(ctx, query, args...) 
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close() 
+
+	urlMap := make(map[uuid.UUID]string, len(imageIds))
+	for rows.Next() {
+		var imageId uuid.UUID
+		var url string
+		if err := rows.Scan(&imageId, &url); err == nil {
+			urlMap[imageId] = url
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return urlMap, nil
 }

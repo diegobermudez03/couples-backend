@@ -7,10 +7,30 @@ import (
 	"github.com/google/uuid"
 )
 
+
 type AdminService interface {
 	CreateQuizCategory(ctx context.Context, name, description string, image io.Reader) error
 	UpdateQuizCategory(ctx context.Context, id uuid.UUID, name, description string, image io.Reader) error
 	DeleteQuizCategory(ctx context.Context, id uuid.UUID) error
+}
+
+type UserService interface{
+	AuthorizeQuizCreator(ctx context.Context, quizId *uuid.UUID, questionId *uuid.UUID, userId uuid.UUID) error
+
+	GetCategories(ctx context.Context, filters FetchFilters)([]QuizCatModel, error)
+	
+	CreateQuiz(ctx context.Context, name, description, languageCode string, categoryId, userId *uuid.UUID, image io.Reader) (*uuid.UUID, error)
+	UpdateQuiz(ctx context.Context, quizId uuid.UUID, name, description, languageCode string, categoryId *uuid.UUID, image io.Reader) error
+	DeleteQuiz(ctx context.Context, quizId uuid.UUID) error
+
+	CreateQuestion(ctx context.Context, quizId uuid.UUID, parameters CreateQuestionRequest, images map[string]io.Reader)(*uuid.UUID, error)
+	UpdateQuestion(ctx context.Context, questionId uuid.UUID, parameters UpdateQuestionRequest, images map[string]io.Reader) error
+	DeleteQuestion(ctx context.Context, questionId uuid.UUID) error
+}
+
+type FetchFilters struct{
+	Limit 	*int 
+	Page 	*int 
 }
 
 type CreateQuestionRequest struct{
@@ -28,18 +48,6 @@ type UpdateQuestionRequest struct{
 	StrategicAnswerId 	*uuid.UUID
 	StrategicName 		*string 
 	StrategicDescription *string 
-}
-
-type UserService interface{
-	AuthorizeQuizCreator(ctx context.Context, quizId *uuid.UUID, questionId *uuid.UUID, userId uuid.UUID) error
-	
-	CreateQuiz(ctx context.Context, name, description, languageCode string, categoryId, userId *uuid.UUID, image io.Reader) error
-	UpdateQuiz(ctx context.Context, quizId uuid.UUID, name, description, languageCode string, categoryId *uuid.UUID, image io.Reader) error
-	DeleteQuiz(ctx context.Context, quizId uuid.UUID) error
-
-	CreateQuestion(ctx context.Context, quizId uuid.UUID, parameters CreateQuestionRequest, images map[string]io.Reader) error
-	UpdateQuestion(ctx context.Context, questionId uuid.UUID, parameters UpdateQuestionRequest, images map[string]io.Reader) error
-	DeleteQuestion(ctx context.Context, questionId uuid.UUID) error
 }
 
 

@@ -25,4 +25,5 @@ var (
 	ErrUnathorizedToEditQuiz = errors.New("UNATHORIZED_TO_EDIT_QUIZ")
 	ErrCantModifyOptionsOfQuestionWithAnswers = errors.New("CANT_MODIFY_OPTIONS_OF_QUESTION_WITH_ANSWERS")
 	ErrUpdatingQuestion = errors.New("UNABLE_TO_UPDATE_QUESTION")
+	ErrRetrievingCategories = errors.New("UNABLE_TO_RETRIEVE_CATEGORIES")
 )

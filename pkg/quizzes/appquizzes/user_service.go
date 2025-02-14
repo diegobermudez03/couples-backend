@@ -84,17 +84,17 @@ func (s *UserService) AuthorizeQuizCreator(ctx context.Context, quizId *uuid.UUI
 }
 
 
-func (s *UserService) CreateQuiz(ctx context.Context, name, description, languageCode string, categoryId, userId *uuid.UUID, image io.Reader) error{
+func (s *UserService) CreateQuiz(ctx context.Context, name, description, languageCode string, categoryId, userId *uuid.UUID, image io.Reader) (*uuid.UUID, error){
 	if name == ""{
-		return quizzes.ErrEmptyQuizName
+		return nil, quizzes.ErrEmptyQuizName
 	}
 	if err := s.loacalizationService.ValidateLanguage(languageCode); err != nil{
-		return quizzes.ErrInvalidLanguage
+		return nil, quizzes.ErrInvalidLanguage
 	}
 	if categoryId != nil{
 		cat, err := s.repo.GetCategoryById(ctx, *categoryId)
 		if err != nil{
-			return quizzes.ErrCreatingQuiz
+			return nil, quizzes.ErrCreatingQuiz
 		} else if cat == nil{
 			categoryId = nil
 		}
@@ -121,9 +121,9 @@ func (s *UserService) CreateQuiz(ctx context.Context, name, description, languag
 
 	if num, err := s.repo.CreateQuiz(ctx, &model); err != nil || num == 0{
 		log.Print(err.Error())
-		return quizzes.ErrCreatingQuiz
+		return nil, quizzes.ErrCreatingQuiz
 	}
-	return nil
+	return &quizId, nil
 }
 
 
@@ -170,25 +170,25 @@ func (s *UserService)  UpdateQuiz(ctx context.Context, quizId uuid.UUID, name, d
 	return nil 
 }
 
-func (s *UserService) CreateQuestion(ctx context.Context, quizId uuid.UUID, parameters quizzes.CreateQuestionRequest, images map[string]io.Reader) error{
+func (s *UserService) CreateQuestion(ctx context.Context, quizId uuid.UUID, parameters quizzes.CreateQuestionRequest, images map[string]io.Reader) (*uuid.UUID, error){
 	quiz, err := s.repo.GetQuizById(ctx, quizId)
 	if err != nil || quiz  == nil{
-		return quizzes.ErrQuizNotFound
+		return nil, quizzes.ErrQuizNotFound
 	}
 
 	//call specific question type creator for options JSON
 	creator, ok := s.creators[parameters.QType]
 	if !ok{
-		return quizzes.ErrInvalidQuestionType
+		return nil, quizzes.ErrInvalidQuestionType
 	}
 	questionId := uuid.New()
 	inputOptionsJson, err := json.Marshal(parameters.OptionsJson)
 	if err != nil{
-		return quizzes.ErrInvalidQuestionOptions
+		return nil, quizzes.ErrInvalidQuestionOptions
 	}
 	optionsJson, err := creator(ctx, quiz.Id, string(inputOptionsJson), images, questionId)
 	if err != nil{
-		return err
+		return nil, err
 	}
 
 	// create model to store
@@ -221,17 +221,15 @@ func (s *UserService) CreateQuestion(ctx context.Context, quizId uuid.UUID, para
 	//calculate ordering 
 	maxOrder, err := s.repo.GetMaxOrderQuestionFromQuiz(ctx, quizId)
 	if err != nil{
-		log.Print(err.Error())
-		return quizzes.ErrCreatingQuestion
+		return nil, quizzes.ErrCreatingQuestion
 	}
 	questionModel.Ordering = maxOrder + 1 
 
 	//write question
 	if num, err := s.repo.CreateQuestion(ctx, &questionModel); err != nil || num == 0{
-		log.Print(err.Error())
-		return quizzes.ErrCreatingQuestion
+		return nil, quizzes.ErrCreatingQuestion
 	}
-	return nil
+	return &questionId,nil
 }
 
 func (s *UserService) DeleteQuestion(ctx context.Context, questionId uuid.UUID) error{
@@ -357,6 +355,34 @@ func (s *UserService) UpdateQuestion(ctx context.Context, questionId uuid.UUID, 
 		return quizzes.ErrUpdatingQuestion
 	}
 	return nil
+}
+
+
+func (s *UserService) GetCategories(ctx context.Context, filters quizzes.FetchFilters)([]quizzes.QuizCatModel, error){
+	if (filters.Limit != nil && *filters.Limit > 50) || filters.Limit == nil{
+		filters.Limit = new(int)
+		*filters.Limit = 50
+	}
+	plainCategories, err := s.repo.GetCategories(ctx, filters)
+	if err != nil{
+		return nil, quizzes.ErrRetrievingCategories
+	}
+	imagesIds := make([]uuid.UUID, 0, len(plainCategories))
+	for _, cat := range plainCategories{
+		imagesIds = append(imagesIds, cat.ImageId)
+	}
+	urls, _ := s.fileService.GetBatchUrls(ctx, imagesIds)
+	categories := make([]quizzes.QuizCatModel, 0, len(plainCategories))
+	for _, plainCat := range plainCategories{
+		url := urls[plainCat.ImageId]
+		categories = append(categories, quizzes.QuizCatModel{
+			Id: plainCat.Id,
+			Name: plainCat.Name,
+			Description: plainCat.Description,
+			ImageUrl: url,
+		})
+	}
+	return categories, nil
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

@@ -13,12 +13,14 @@ type Service interface {
 	UpdateImage(ctx context.Context, image io.Reader, maxSize int64, id uuid.UUID) (error)
 	GetImage(ctx context.Context, path string) (*os.File, string, error)
 	DeleteImage(ctx context.Context, imageId uuid.UUID) error
+	GetBatchUrls(ctx context.Context, imagesIds []uuid.UUID) (map[uuid.UUID]string, error)
 }
 
 type Repository interface{
 	CreateFile(ctx context.Context, file *FileModel) (int,error)
 	GetFileById(ctx context.Context, id uuid.UUID) (*FileModel, error)
 	DeleteFileById(ctx context.Context, id uuid.UUID) (int, error)
+	GetBatchUrls(ctx context.Context, imageIds []uuid.UUID)(map[uuid.UUID]string, error)
 }
 
 type FileRepository interface{

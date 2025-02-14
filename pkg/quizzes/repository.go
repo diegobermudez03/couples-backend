@@ -7,6 +7,7 @@ import (
 )
 
 type QuizzesRepository interface {
+	GetCategories(ctx context.Context, fetchFilters FetchFilters) ([]QuizCatPlainModel, error)
 	GetCategoryByName(ctx context.Context, name string) (*QuizCatPlainModel, error)
 	GetCategoryById(ctx context.Context, id uuid.UUID) (*QuizCatPlainModel, error)
 	CreateCategory(ctx context.Context, category *QuizCatPlainModel) (int, error)

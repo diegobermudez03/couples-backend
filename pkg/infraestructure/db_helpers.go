@@ -45,3 +45,23 @@ func GetFilteredQuery(baseQuery string, filters map[string]any) (string, []any) 
 	}
 	return builder.String(), args
 }
+
+
+func GetFetchingQuery(baseQuery string, counter int, limit int, page *int) (string, []any){
+	builder := strings.Builder{}
+	builder.WriteString(baseQuery)
+	counter++
+	args := []any{}
+	builder.WriteString(fmt.Sprintf(" LIMIT $%d ", counter))
+	args = append(args, limit)
+	counter++
+	if page != nil{
+		offset := 0
+		if page != nil{
+			offset = (*page) * limit - (*page)
+		}
+		builder.WriteString(fmt.Sprintf(" OFFSET $%d", counter))
+		args = append(args, offset)
+	}
+	return builder.String(), args
+}

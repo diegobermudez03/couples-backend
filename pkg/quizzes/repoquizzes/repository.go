@@ -251,6 +251,7 @@ func (r *QuizzesPostgresRepo) GetQuestions(ctx context.Context, filter quizzes.Q
 	if err != nil{
 		return nil, err 
 	}
+	defer rows.Close()
 	var questions[]quizzes.QuestionPlainModel
 	for rows.Next(){
 		model, err := r.rowToQuestion(rows)
@@ -273,6 +274,7 @@ func (r *QuizzesPostgresRepo) GetQuizzes(ctx context.Context, filter quizzes.Qui
 	if err != nil{
 		return nil, err 
 	}
+	defer rows.Close()
 	var quizes []quizzes.QuizPlainModel
 	for rows.Next(){
 		model, err := r.rowToQuiz(rows)
@@ -329,6 +331,25 @@ func (r *QuizzesPostgresRepo) UpdateQuestion(ctx context.Context, model *quizzes
 			model.Question, model.OptionsJson, model.StrategicAnswerId, model.Id,
 		)
 	})
+}
+
+func (r *QuizzesPostgresRepo) GetCategories(ctx context.Context, fetchFilters quizzes.FetchFilters) ([]quizzes.QuizCatPlainModel, error){
+	baseQuery := `SELECT id, name, description, created_at, active, image_id
+		FROM quiz_categories WHERE active = TRUE`
+	query, args := infraestructure.GetFetchingQuery(baseQuery, 0, *fetchFilters.Limit, fetchFilters.Page)
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil{
+		return nil, err
+	}
+	defer rows.Close()
+	categories := []quizzes.QuizCatPlainModel{}
+	for rows.Next(){
+		cat, err := r.rowToCategory(rows)
+		if err == nil{
+			categories = append(categories, *cat)
+		}
+	}
+	return categories, nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////

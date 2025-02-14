@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/diegobermudez03/couples-backend/internal/http/middlewares"
 	"github.com/diegobermudez03/couples-backend/internal/utils"
@@ -55,13 +56,14 @@ func (h *QuizzesHandler) RegisterRoutes(r *chi.Mux) {
 	routerAdmin.Post("/categories", h.postAdminQuizCategory)
 	routerAdmin.Patch(fmt.Sprintf("/categories/{%s}", CAT_ID_URL_PARAM), h.patchAdminQuizCategory)
 	routerAdmin.Delete(fmt.Sprintf("/categories/{%s}", CAT_ID_URL_PARAM), h.deleteCategory)
+	routerAdmin.Get("/categories", h.getCategories)
 	//	quiz handlers
 	routerAdmin.Post(fmt.Sprintf("/categories/{%s}/quizes", CAT_ID_URL_PARAM), h.postQuiz)
 	routerAdmin.Patch(fmt.Sprintf("/quizes/{%s}", QUIZ_ID_URL_PARAM), h.patchQuizHandler)
 	routerAdmin.Delete(fmt.Sprintf("/quizes/{%s}", QUIZ_ID_URL_PARAM), h.deleteQuiz)
 	//question handlers
 	routerAdmin.Post(fmt.Sprintf("/quizes/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
-	routerUsers.Patch(fmt.Sprintf("/questions/{%s}", QUESTION_ID_URL_PARAM), h.patchQuestion)
+	routerAdmin.Patch(fmt.Sprintf("/questions/{%s}", QUESTION_ID_URL_PARAM), h.patchQuestion)
 	routerAdmin.Delete(fmt.Sprintf("/questions/{%s}", QUESTION_ID_URL_PARAM), h.deleteQuestion)
 }
 
@@ -113,7 +115,6 @@ type patchQuizDTO struct{
 	LanguageCode string 	`json:"languageCode"`
 	CategoryId 	*uuid.UUID	`json:"categoryId"`
 }
-
 
 /////////////////////////////////// ERRORS CODES
 
@@ -210,13 +211,15 @@ func (h *QuizzesHandler) postQuiz(w http.ResponseWriter, r *http.Request){
 		defer file.Close()
 	}
 
-	err = h.service.CreateQuiz(r.Context(), payload.Name, payload.Description, payload.LanguageCode, catPtr, userId,file)
+	quizId, err := h.service.CreateQuiz(r.Context(), payload.Name, payload.Description, payload.LanguageCode, catPtr, userId,file)
 	if err != nil{
 		code := utils.GetErrorCode(err, quizzessErrorCodes, 500)
 		utils.WriteError(w, code, err)
 		return 
 	}
-	utils.WriteJSON(w, http.StatusCreated, nil)
+	utils.WriteJSON(w, http.StatusCreated, map[string]any{
+		"quizId" : quizId,
+	})
 }
 
 
@@ -283,7 +286,7 @@ func (h *QuizzesHandler) postQuestionHandler(w http.ResponseWriter, r *http.Requ
 		}
 	}
 	
-	err = h.service.CreateQuestion(r.Context(), parsedId,
+	questionId, err := h.service.CreateQuestion(r.Context(), parsedId,
 		quizzes.CreateQuestionRequest{
 			Question: payload.Question,
 			QType: payload.QuestionType,
@@ -299,7 +302,9 @@ func (h *QuizzesHandler) postQuestionHandler(w http.ResponseWriter, r *http.Requ
 		utils.WriteError(w, code, err)
 		return 
 	}
-	utils.WriteJSON(w, http.StatusCreated, nil)
+	utils.WriteJSON(w, http.StatusCreated, map[string]any{
+		"questionId" : questionId,
+	})
 }
 
 
@@ -389,6 +394,20 @@ func (h *QuizzesHandler) patchQuestion(w http.ResponseWriter, r *http.Request){
 	}
 }
 
+func (h *QuizzesHandler) getCategories(w http.ResponseWriter, r *http.Request){
+	limit, page := getLimitPageOffset(r)
+	categories, err := h.service.GetCategories(r.Context(), quizzes.FetchFilters{
+		Limit : getIntPointer(limit),
+		Page: getIntPointer(page),
+	})
+	if err != nil{
+		code := utils.GetErrorCode(err, quizzessErrorCodes, 500)
+		utils.WriteError(w, code, err)
+		return 
+	}
+	utils.WriteJSON(w, http.StatusOK, categories)
+}
+
 //////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
 func (h *QuizzesHandler) getUserId(r *http.Request) *uuid.UUID{
@@ -398,4 +417,15 @@ func (h *QuizzesHandler) getUserId(r *http.Request) *uuid.UUID{
 		ptUserId = &userId
 	}
 	return ptUserId
+}
+
+
+func getIntPointer(text string) (*int){
+	if text != ""{
+		num, err := strconv.Atoi(text)
+		if err == nil{
+			return &num 
+		}
+	}
+	return nil
 }
