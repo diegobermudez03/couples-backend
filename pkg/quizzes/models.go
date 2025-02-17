@@ -46,6 +46,11 @@ type QuizModel struct{
 	Category	*QuizCatModel	`json:"category"`
 }
 
+type QuizPage struct{
+	Quizzes 	[]QuizModel 	`json:"quizzes"`
+	Categories 	[]QuizCatModel	`json:"categories"`
+}
+
 type QuestionPlainModel struct{
 	Id 				uuid.UUID
 	Ordering 		int 

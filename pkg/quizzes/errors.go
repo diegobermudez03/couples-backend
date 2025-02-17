@@ -27,4 +27,6 @@ var (
 	ErrUpdatingQuestion = errors.New("UNABLE_TO_UPDATE_QUESTION")
 	ErrRetrievingCategories = errors.New("UNABLE_TO_RETRIEVE_CATEGORIES")
 	ErrRetrievingQuizzes = errors.New("UNABLE_TO_RETRIEVE_QUIZES")
+	ErrUnableToPublish = errors.New("UNABLE_TO_PUBLISH_QUIZ")
+	ErrQuizAlreadyPublished = errors.New("QUIZ_ALREADY_PUBLISHED")
 )

@@ -268,7 +268,7 @@ func (r *QuizzesPostgresRepo) GetQuestions(ctx context.Context, filter quizzes.Q
 func (r *QuizzesPostgresRepo) GetQuizzes(ctx context.Context, filter quizzes.QuizFilter) ([]quizzes.QuizPlainModel, error){
 	query, args := infraestructure.GetFilteredQuery(
 		`SELECT id, name, description, language_code, image_id, published, active, created_at, category_id, creator_id
-		FROM quizzes  WHERE active=TRUE `,
+		FROM quizzes  WHERE active=TRUE AND published=TRUE`,
 		quizFilter(&filter),
 	)
 	counter := len(args)+1

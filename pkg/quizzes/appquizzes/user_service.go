@@ -84,7 +84,7 @@ func (s *UserService) AuthorizeQuizCreator(ctx context.Context, quizId *uuid.UUI
 	}else if quiz == nil{
 		return quizzes.ErrQuizNotFound
 	}
-	if quiz.CreatorId != &userId{
+	if *quiz.CreatorId != userId{
 		return quizzes.ErrUnathorizedToEditQuiz
 	}
 	return nil
@@ -457,6 +457,49 @@ func (s *UserService) GetQuizes(ctx context.Context, quizFilters quizzes.QuizFil
 	return quizes, nil
 }
 
+func (s *UserService) GetQuizesHomePage(ctx context.Context, userId uuid.UUID)(*quizzes.QuizPage, error){
+	var categories []quizzes.QuizCatModel
+	var quizes []quizzes.QuizModel
+	var catError, quizError error
+	wGroup := sync.WaitGroup{}
+	wGroup.Add(2)
+	go func(){
+		categories, catError = s.GetCategories(ctx, quizzes.FetchFilters{})
+		wGroup.Done()
+	}()
+	go func(){
+		quizes, quizError = s.GetQuizes(ctx, quizzes.QuizFilter{}, &userId)
+		wGroup.Done()
+	}()
+
+	wGroup.Wait()
+	if catError != nil{
+		return nil, catError
+	}
+	if quizError != nil{
+		return nil, quizError
+	}
+	return &quizzes.QuizPage{
+		Quizzes: quizes,
+		Categories : categories,
+	}, nil
+}
+
+
+func (s *UserService) PublishQuiz(ctx context.Context, quizId uuid.UUID)error{
+	quiz, err := s.repo.GetQuizById(ctx, quizId)
+	if err != nil{
+		return quizzes.ErrUnableToPublish
+	}
+	if quiz.Published {
+		return quizzes.ErrQuizAlreadyPublished
+	}
+	quiz.Published = true 
+	if num, err := s.repo.UpdateQuiz(ctx, quiz); num == 0 || err != nil{
+		return quizzes.ErrUnableToPublish
+	}
+	return nil
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////

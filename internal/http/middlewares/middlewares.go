@@ -107,12 +107,12 @@ func (m *Middlewares) CheckUserQuizPermissions(handler http.Handler) http.Handle
 			var parsedQuestionId *uuid.UUID = nil
 			if quizId != ""{
 				parsed, err := uuid.Parse(quizId)
-				if err != nil{
+				if err == nil{
 					parsedQuizId = &parsed
 				}
 			}else if questionId != ""{
 				parsed, err := uuid.Parse(questionId)
-				if err != nil{
+				if err == nil{
 					parsedQuestionId = &parsed
 				}
 			}

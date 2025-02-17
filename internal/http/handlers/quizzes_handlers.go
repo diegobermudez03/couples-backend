@@ -43,11 +43,14 @@ func (h *QuizzesHandler) RegisterRoutes(r *chi.Mux) {
 
 	r.Mount("/quizzes", routerUsers)
 
+	// quiz page
+	routerUsers.Get("/quizes/homepage", h.getHomePage)
 	//	quiz handlers
 	routerUsers.Get("/quizes", h.getQuizes)
 	routerUsers.Post("/quizes", h.postQuiz)
 	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Patch(fmt.Sprintf("/quizes/{%s}", QUIZ_ID_URL_PARAM), h.patchQuizHandler)
 	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Delete(fmt.Sprintf("/quizes/{%s}", QUIZ_ID_URL_PARAM), h.deleteQuiz)
+	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Patch(fmt.Sprintf("/quizes/{%s}/publish", QUIZ_ID_URL_PARAM), h.patchPublishQuiz)
 	// 	question handlers
 	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Post(fmt.Sprintf("/quizes/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
 	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Patch(fmt.Sprintf("/questions/{%s}", QUESTION_ID_URL_PARAM), h.patchQuestion)
@@ -68,6 +71,7 @@ func (h *QuizzesHandler) RegisterRoutes(r *chi.Mux) {
 	routerAdmin.Patch(fmt.Sprintf("/quizes/{%s}", QUIZ_ID_URL_PARAM), h.patchQuizHandler)
 	routerAdmin.Delete(fmt.Sprintf("/quizes/{%s}", QUIZ_ID_URL_PARAM), h.deleteQuiz)
 	routerAdmin.Get("/quizes", h.getQuizes)
+	routerAdmin.Patch(fmt.Sprintf("/quizes/{%s}/publish", QUIZ_ID_URL_PARAM), h.patchPublishQuiz)
 	//question handlers
 	routerAdmin.Post(fmt.Sprintf("/quizes/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
 	routerAdmin.Patch(fmt.Sprintf("/questions/{%s}", QUESTION_ID_URL_PARAM), h.patchQuestion)
@@ -129,6 +133,29 @@ var quizzessErrorCodes = map[error] int{
 	quizzes.ErrCategoryAlreadyExists : http.StatusConflict,
 	quizzes.ErrMissingCategoryAttributes : http.StatusBadRequest,
 	quizzes.ErrCreatingCategory : http.StatusInternalServerError,
+	quizzes.ErrInvalidImageType : http.StatusBadRequest,
+	quizzes.ErrUpdatingCategory : http.StatusInternalServerError,
+	quizzes.ErrCreatingQuiz : http.StatusInternalServerError,
+	quizzes.ErrCategoryNotFound : http.StatusNotFound,
+	quizzes.ErrEmptyQuizName : http.StatusBadRequest,
+	quizzes.ErrInvalidLanguage : http.StatusBadRequest,
+	quizzes.ErrUpdatingQuiz : http.StatusInternalServerError,
+	quizzes.ErrQuizNotFound : http.StatusNotFound,
+	quizzes.ErrInvalidQuestionType : http.StatusBadRequest,
+	quizzes.ErrCreatingQuestion : http.StatusInternalServerError,
+	quizzes.ErrRetrievingQuiz : http.StatusInternalServerError,
+	quizzes.ErrInvalidQuestionOptions : http.StatusInternalServerError,
+	quizzes.ErrDeletingCategory : http.StatusInternalServerError,
+	quizzes.ErrDeletingQuestion : http.StatusInternalServerError,
+	quizzes.ErrDeletingQuiz : http.StatusInternalServerError,
+	quizzes.ErrQuestionNotFound : http.StatusNotFound,
+	quizzes.ErrUnathorizedToEditQuiz : http.StatusUnauthorized,
+	quizzes.ErrCantModifyOptionsOfQuestionWithAnswers : http.StatusBadRequest,
+	quizzes.ErrUpdatingQuestion : http.StatusInternalServerError,
+	quizzes.ErrRetrievingCategories : http.StatusInternalServerError,
+	quizzes.ErrRetrievingQuizzes : http.StatusInternalServerError,
+	quizzes.ErrUnableToPublish : http.StatusInternalServerError,
+	quizzes.ErrQuizAlreadyPublished : http.StatusNotModified,
 }
 
 
@@ -446,6 +473,35 @@ func (h *QuizzesHandler) getQuizes(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	utils.WriteJSON(w, http.StatusOK, quizes)
+}
+
+func (h *QuizzesHandler) getHomePage(w http.ResponseWriter, r *http.Request){
+	auxUserId := r.Context().Value(middlewares.UserIdKey{})
+	userId := auxUserId.(uuid.UUID)
+
+	page, err := h.service.GetQuizesHomePage(r.Context(), userId)
+	if err != nil{
+		code := utils.GetErrorCode(err, quizzessErrorCodes, 500)
+		utils.WriteError(w, code, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, page)
+}
+
+
+func (h *QuizzesHandler) patchPublishQuiz(w http.ResponseWriter, r *http.Request){
+	auxQuizId := chi.URLParam(r, QUIZ_ID_URL_PARAM)
+	quizId, err := uuid.Parse(auxQuizId)
+	if err != nil{
+		utils.WriteError(w, http.StatusBadRequest,utils.ErrEmptyQuizId )
+		return
+	}
+	if err := h.service.PublishQuiz(r.Context(), quizId); err != nil{
+		code := utils.GetErrorCode(err, quizzessErrorCodes, 500)
+		utils.WriteError(w, code, err)
+		return 
+	}
+	utils.WriteJSON(w, http.StatusOK, nil)
 }
 
 //////////////////////////////////////////////////////////////////////////

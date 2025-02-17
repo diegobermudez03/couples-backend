@@ -15,10 +15,13 @@ type AdminService interface {
 }
 
 type UserService interface{
+	GetQuizesHomePage(ctx context.Context, userId uuid.UUID)(*QuizPage, error)
+	
 	AuthorizeQuizCreator(ctx context.Context, quizId *uuid.UUID, questionId *uuid.UUID, userId uuid.UUID) error
 
 	GetCategories(ctx context.Context, filters FetchFilters)([]QuizCatModel, error)
 	
+	PublishQuiz(ctx context.Context, quizId uuid.UUID)error
 	GetQuizes(ctx context.Context, quizFilters QuizFilter, userId *uuid.UUID)([]QuizModel, error)
 	CreateQuiz(ctx context.Context, name, description, languageCode string, categoryId, userId *uuid.UUID, image io.Reader) (*uuid.UUID, error)
 	UpdateQuiz(ctx context.Context, quizId uuid.UUID, name, description, languageCode string, categoryId *uuid.UUID, image io.Reader) error
