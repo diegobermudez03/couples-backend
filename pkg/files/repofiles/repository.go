@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/diegobermudez03/couples-backend/pkg/files"
@@ -77,7 +76,6 @@ func (r *FilesPostgresRepo) GetBatchUrls(ctx context.Context, imageIds []uuid.UU
 	}
 
 	query := fmt.Sprintf(`SELECT id, url FROM files WHERE id IN(%s)`, ids.String())
-	log.Println(query)
 	rows, err := r.db.QueryContext(ctx, query, args...) 
 	if err != nil {
 		return nil, err

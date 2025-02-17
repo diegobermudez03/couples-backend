@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"log"
 	"regexp"
 	"strings"
 	"sync"
@@ -64,7 +63,6 @@ func(s *AuthServiceImpl) RegisterUserAuth(ctx context.Context, email, password, 
 
 	hashBytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil{
-		log.Print("error hashing password: ", err.Error())
 		return "", auth.ErrorCreatingAccount
 	}
 	hashString := string(hashBytes)

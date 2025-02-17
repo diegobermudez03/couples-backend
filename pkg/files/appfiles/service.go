@@ -116,6 +116,9 @@ func (s *FilesServiceImpl) DeleteImage(ctx context.Context, imageId uuid.UUID) e
 }
 
 func (s *FilesServiceImpl) GetBatchUrls(ctx context.Context, imagesIds []uuid.UUID) (map[uuid.UUID]string, error){
+	if len(imagesIds) == 0{
+		return map[uuid.UUID]string{}, nil
+	}
 	return s.dbRepo.GetBatchUrls(ctx, imagesIds)
 }
 

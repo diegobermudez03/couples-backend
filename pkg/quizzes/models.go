@@ -26,8 +26,8 @@ type QuizCatModel struct {
 
 
 type QuizPlainModel struct{
-	Id 				uuid.UUID
-	Name 			string 
+	Id 				uuid.UUID	
+	Name 			string 		
 	Description 	string
 	LanguageCode 	string
 	ImageId 		*uuid.UUID
@@ -36,6 +36,14 @@ type QuizPlainModel struct{
 	CreatedAt 		time.Time
 	CategoryId 		*uuid.UUID
 	CreatorId 		*uuid.UUID
+}
+
+type QuizModel struct{
+	Id 			uuid.UUID	`json:"id"`
+	Name 		string 		`json:"name"`
+	Description string 		`json:"description"`
+	ImageUrl 	string 		`json:"imageUrl"`
+	Category	*QuizCatModel	`json:"category"`
 }
 
 type QuestionPlainModel struct{

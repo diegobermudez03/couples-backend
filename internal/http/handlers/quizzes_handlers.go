@@ -3,7 +3,6 @@ package handlers
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -17,6 +16,10 @@ import (
 const CAT_ID_URL_PARAM = "catId"
 const QUIZ_ID_URL_PARAM = "quizId"
 const QUESTION_ID_URL_PARAM = "questionId"
+
+const ORDER_BY_FILTER = "orderBy"
+const CATEGORY_FILTER = "categoryId"
+const TEXT_FILTER = "text"
 
 type QuizzesHandler struct {
 	service     quizzes.UserService
@@ -41,6 +44,7 @@ func (h *QuizzesHandler) RegisterRoutes(r *chi.Mux) {
 	r.Mount("/quizzes", routerUsers)
 
 	//	quiz handlers
+	routerUsers.Get("/quizes", h.getQuizes)
 	routerUsers.Post("/quizes", h.postQuiz)
 	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Patch(fmt.Sprintf("/quizes/{%s}", QUIZ_ID_URL_PARAM), h.patchQuizHandler)
 	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Delete(fmt.Sprintf("/quizes/{%s}", QUIZ_ID_URL_PARAM), h.deleteQuiz)
@@ -48,6 +52,8 @@ func (h *QuizzesHandler) RegisterRoutes(r *chi.Mux) {
 	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Post(fmt.Sprintf("/quizes/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
 	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Patch(fmt.Sprintf("/questions/{%s}", QUESTION_ID_URL_PARAM), h.patchQuestion)
 	routerUsers.With(h.middlewares.CheckUserQuizPermissions).Delete(fmt.Sprintf("/questions/{%s}", QUESTION_ID_URL_PARAM), h.deleteQuestion)
+	// categories handlers
+	routerUsers.Get("/categories", h.getCategories)
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	r.Mount("/admin/quizzes", routerAdmin)
@@ -61,6 +67,7 @@ func (h *QuizzesHandler) RegisterRoutes(r *chi.Mux) {
 	routerAdmin.Post(fmt.Sprintf("/categories/{%s}/quizes", CAT_ID_URL_PARAM), h.postQuiz)
 	routerAdmin.Patch(fmt.Sprintf("/quizes/{%s}", QUIZ_ID_URL_PARAM), h.patchQuizHandler)
 	routerAdmin.Delete(fmt.Sprintf("/quizes/{%s}", QUIZ_ID_URL_PARAM), h.deleteQuiz)
+	routerAdmin.Get("/quizes", h.getQuizes)
 	//question handlers
 	routerAdmin.Post(fmt.Sprintf("/quizes/{%s}/questions", QUIZ_ID_URL_PARAM), h.postQuestionHandler)
 	routerAdmin.Patch(fmt.Sprintf("/questions/{%s}", QUESTION_ID_URL_PARAM), h.patchQuestion)
@@ -225,7 +232,6 @@ func (h *QuizzesHandler) postQuiz(w http.ResponseWriter, r *http.Request){
 
 
 func (h *QuizzesHandler) patchQuizHandler(w http.ResponseWriter, r *http.Request){
-	log.Println("patch quiz")
 	quizId := chi.URLParam(r, QUIZ_ID_URL_PARAM)
 	quizParsed, err := uuid.Parse(quizId)
 	if err != nil{
@@ -260,7 +266,6 @@ func (h *QuizzesHandler) patchQuizHandler(w http.ResponseWriter, r *http.Request
 
 
 func (h *QuizzesHandler) postQuestionHandler(w http.ResponseWriter, r *http.Request){
-	log.Print("post question handler")
 	id := chi.URLParam(r, QUIZ_ID_URL_PARAM)
 	parsedId, err := uuid.Parse(id)
 	if err != nil{
@@ -406,6 +411,41 @@ func (h *QuizzesHandler) getCategories(w http.ResponseWriter, r *http.Request){
 		return 
 	}
 	utils.WriteJSON(w, http.StatusOK, categories)
+}
+
+func (h *QuizzesHandler) getQuizes(w http.ResponseWriter, r *http.Request){
+	limit, page := getLimitPageOffset(r)
+	filter := quizzes.QuizFilter{
+		FetchFilters: quizzes.FetchFilters{
+			Limit : getIntPointer(limit),
+			Page: getIntPointer(page),
+		},
+	}
+	if orderBy := r.URL.Query().Get(ORDER_BY_FILTER); orderBy != ""{
+		filter.OrderBy = &orderBy
+	}
+	if categoryId := r.URL.Query().Get(CATEGORY_FILTER); categoryId != ""{
+		if parsedId, err := uuid.Parse(categoryId); err == nil{
+			filter.CategoryId = &parsedId
+		}
+	}
+	if text := r.URL.Query().Get(TEXT_FILTER); text != ""{
+		filter.Text = &text
+	}
+	var userId *uuid.UUID
+	if auxUserId := r.Context().Value(middlewares.UserIdKey{}); auxUserId != nil{
+		if pid, ok := auxUserId.(uuid.UUID); ok{
+			filter.PlayerId = &pid
+			userId = &pid
+		}
+	}
+	quizes, err := h.service.GetQuizes(r.Context(), filter, userId)
+	if err != nil{
+		code := utils.GetErrorCode(err, quizzessErrorCodes, 500)
+		utils.WriteError(w, code, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, quizes)
 }
 
 //////////////////////////////////////////////////////////////////////////

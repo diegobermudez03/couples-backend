@@ -19,6 +19,7 @@ type UserService interface{
 
 	GetCategories(ctx context.Context, filters FetchFilters)([]QuizCatModel, error)
 	
+	GetQuizes(ctx context.Context, quizFilters QuizFilter, userId *uuid.UUID)([]QuizModel, error)
 	CreateQuiz(ctx context.Context, name, description, languageCode string, categoryId, userId *uuid.UUID, image io.Reader) (*uuid.UUID, error)
 	UpdateQuiz(ctx context.Context, quizId uuid.UUID, name, description, languageCode string, categoryId *uuid.UUID, image io.Reader) error
 	DeleteQuiz(ctx context.Context, quizId uuid.UUID) error
@@ -27,6 +28,10 @@ type UserService interface{
 	UpdateQuestion(ctx context.Context, questionId uuid.UUID, parameters UpdateQuestionRequest, images map[string]io.Reader) error
 	DeleteQuestion(ctx context.Context, questionId uuid.UUID) error
 }
+
+const OrderByDate = "date"
+const OrderByNPlayed = "mostplayed"
+
 
 type FetchFilters struct{
 	Limit 	*int 

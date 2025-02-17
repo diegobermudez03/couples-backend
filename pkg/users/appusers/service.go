@@ -269,3 +269,11 @@ func(s *UsersServiceImpl)  GetTempCoupleFromUser(ctx context.Context, userId uui
 	}
 	return tempCouple, nil
 }
+
+func(s *UsersServiceImpl)  GetUserLanguage(ctx context.Context, userId uuid.UUID) (string, error){
+	user, err := s.usersRepo.GetUserById(ctx, userId)
+	if err != nil{
+		return "", err 
+	}
+	return user.LanguageCode, nil
+}

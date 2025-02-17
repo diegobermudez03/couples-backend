@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"log"
+	"sync"
 	"time"
 
 	"github.com/diegobermudez03/couples-backend/pkg/files"
 	"github.com/diegobermudez03/couples-backend/pkg/infraestructure"
 	"github.com/diegobermudez03/couples-backend/pkg/localization"
 	"github.com/diegobermudez03/couples-backend/pkg/quizzes"
+	"github.com/diegobermudez03/couples-backend/pkg/users"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 )
@@ -21,25 +22,31 @@ type QuestionDeletor func(ctx context.Context, question *quizzes.QuestionPlainMo
 type UserService struct{
 	transactions 	infraestructure.Transaction
 	fileService		files.Service
+	userService 	users.UsersService
 	loacalizationService localization.LocalizationService
 	repo 			quizzes.QuizzesRepository
 	creators 		map[string]QuestionOptionsCreator
 	deletors 		map[string]QuestionDeletor
 	jsonValidator 	*validator.Validate
+	maxFetchLimit	int
 }
 
 func NewUserService(
 	transactions infraestructure.Transaction,
 	fileService	files.Service, 
+	userService users.UsersService,
 	loacalizationService localization.LocalizationService, 
 	repo quizzes.QuizzesRepository,
+	maxFetchLimit int,
 	) quizzes.UserService{
 	service := &UserService{
 		transactions: transactions,
 		fileService: fileService,
+		userService :userService,
 		loacalizationService: loacalizationService,
 		repo: repo,
 		jsonValidator: validator.New(),
+		maxFetchLimit:maxFetchLimit,
 	}
 	service.creators = map[string]QuestionOptionsCreator{
 		quizzes.TRUE_FALSE_TYPE : service.trueFalseCreator,
@@ -120,7 +127,6 @@ func (s *UserService) CreateQuiz(ctx context.Context, name, description, languag
 	}
 
 	if num, err := s.repo.CreateQuiz(ctx, &model); err != nil || num == 0{
-		log.Print(err.Error())
 		return nil, quizzes.ErrCreatingQuiz
 	}
 	return &quizId, nil
@@ -359,14 +365,104 @@ func (s *UserService) UpdateQuestion(ctx context.Context, questionId uuid.UUID, 
 
 
 func (s *UserService) GetCategories(ctx context.Context, filters quizzes.FetchFilters)([]quizzes.QuizCatModel, error){
-	if (filters.Limit != nil && *filters.Limit > 50) || filters.Limit == nil{
+	if (filters.Limit != nil && *filters.Limit > s.maxFetchLimit) || filters.Limit == nil{
 		filters.Limit = new(int)
-		*filters.Limit = 50
+		*filters.Limit = s.maxFetchLimit
 	}
 	plainCategories, err := s.repo.GetCategories(ctx, filters)
 	if err != nil{
 		return nil, quizzes.ErrRetrievingCategories
 	}
+	return s.pairCategoriesUrls(ctx, plainCategories)
+}
+
+func (s *UserService) GetQuizes(ctx context.Context, quizFilters quizzes.QuizFilter, userId *uuid.UUID)([]quizzes.QuizModel, error){
+	//get plain quizzes
+	if (quizFilters.Limit != nil && *quizFilters.Limit > s.maxFetchLimit) || quizFilters.Limit == nil{
+		quizFilters.Limit = new(int)
+		*quizFilters.Limit = s.maxFetchLimit
+	}
+	if userId != nil{
+		if lang, err := s.userService.GetUserLanguage(ctx, *userId); err == nil{
+			quizFilters.LanguageCode = &lang
+		}
+	}
+	plainQuizes, err := s.repo.GetQuizzes(ctx, quizFilters)
+	if err != nil{ 
+		return nil, quizzes.ErrRetrievingQuizzes 
+	}
+	// extract categories ids in order to batch fetch them, and images ids
+	imagesIds := make([]uuid.UUID, 0, len(plainQuizes))
+	catIds := map[uuid.UUID]bool{}
+	for _, q := range plainQuizes{
+		if q.CategoryId != nil{
+			catIds[*q.CategoryId] = true
+		}
+		if q.ImageId != nil{
+			imagesIds = append(imagesIds, *q.ImageId)
+		}
+	}
+	//in the background fetch image urls while the rest of the function gets the categories
+	wGroup := sync.WaitGroup{}
+	wGroup.Add(1)
+	var imagesUrls map[uuid.UUID]string
+	var imagesError error
+	go func(){
+		imagesUrls, imagesError = s.fileService.GetBatchUrls(ctx, imagesIds)
+		wGroup.Done()
+	}()
+
+	catListIds := make([]uuid.UUID, 0, len(catIds))
+	for k := range catIds {
+		catListIds = append(catListIds, k)
+	}
+	categoriesMap := make(map[uuid.UUID]*quizzes.QuizCatModel, len(catListIds))
+	if len(catListIds) > 0{
+		plainCategories, err := s.repo.GetBatchCategories(ctx, catListIds)
+		if err != nil{ 
+			return nil, quizzes.ErrRetrievingQuizzes 
+		}
+		categories, err := s.pairCategoriesUrls(ctx, plainCategories)
+		if err != nil{ 
+			return nil, quizzes.ErrRetrievingQuizzes
+		}
+		// create the categories map to map the categories with quizzes
+		for _, cat := range categories{
+			categoriesMap[cat.Id] = &cat
+		}
+	}
+	//at this point we make sure to have the quizzes image
+	wGroup.Wait()
+	if imagesError != nil{
+		return nil, quizzes.ErrRetrievingQuizzes
+	}
+	quizes := make([]quizzes.QuizModel, 0, len(plainQuizes))
+	for _, q := range plainQuizes{
+		var category *quizzes.QuizCatModel 
+		var imageUrl string
+		if q.CategoryId != nil{
+			category = categoriesMap[*q.CategoryId]
+		}
+		if q.ImageId != nil{
+			imageUrl = imagesUrls[*q.ImageId]
+		}
+		quizes = append(quizes, quizzes.QuizModel{
+			Id: q.Id,
+			Name: q.Name,
+			Description: q.Description,
+			ImageUrl: imageUrl,
+			Category: category,
+		})
+	}
+	return quizes, nil
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////
+///				PRIVATE METHODS				/////
+
+func (s *UserService) pairCategoriesUrls(ctx context.Context, plainCategories []quizzes.QuizCatPlainModel) ([]quizzes.QuizCatModel, error){
 	imagesIds := make([]uuid.UUID, 0, len(plainCategories))
 	for _, cat := range plainCategories{
 		imagesIds = append(imagesIds, cat.ImageId)
@@ -384,11 +480,6 @@ func (s *UserService) GetCategories(ctx context.Context, filters quizzes.FetchFi
 	}
 	return categories, nil
 }
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////
-///				PRIVATE METHODS				/////
 
 func (s *UserService) getOptionImagePath(quizId uuid.UUID, questionId uuid.UUID, imageName string) []string{
 	return []string{quizzes.DOMAIN_NAME, quizzes.QUIZZES, quizId.String(), questionId.String(), imageName}

@@ -26,4 +26,5 @@ var (
 	ErrCantModifyOptionsOfQuestionWithAnswers = errors.New("CANT_MODIFY_OPTIONS_OF_QUESTION_WITH_ANSWERS")
 	ErrUpdatingQuestion = errors.New("UNABLE_TO_UPDATE_QUESTION")
 	ErrRetrievingCategories = errors.New("UNABLE_TO_RETRIEVE_CATEGORIES")
+	ErrRetrievingQuizzes = errors.New("UNABLE_TO_RETRIEVE_QUIZES")
 )

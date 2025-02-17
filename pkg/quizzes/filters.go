@@ -20,4 +20,10 @@ type UserAnswerFilter struct {
 type QuizFilter struct{
 	Id 		*uuid.UUID
 	CategoryId 	*uuid.UUID
+	Text 		*string
+	OrderBy 	*string 
+	PlayerId 	*uuid.UUID
+	CreatorId 	*uuid.UUID
+	LanguageCode *string
+	FetchFilters
 }

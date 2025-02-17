@@ -19,6 +19,7 @@ type UsersService interface {
 	ConnectCouple(ctx context.Context, userId uuid.UUID, code int)(coupleId *uuid.UUID, partnerId *uuid.UUID, err error)
 	EditPartnersNickname(ctx context.Context, userId uuid.UUID, coupleId uuid.UUID, nickname string) error
 	CheckPartnerNickname(ctx context.Context, userId uuid.UUID) (hasNickname bool, err error)
+	GetUserLanguage(ctx context.Context, userId uuid.UUID) (string, error)
 }
 
 type UsersRepo interface{

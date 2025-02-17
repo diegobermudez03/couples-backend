@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -49,7 +48,6 @@ func (s *AdminServiceImpl) CreateQuizCategory(ctx context.Context, name, descrip
 		if errors.Is(err, files.ErrInvalidImageType){
 			return quizzes.ErrInvalidImageType
 		}
-		log.Print(err.Error())
 		return quizzes.ErrCreatingCategory
 	}	
 	
@@ -62,7 +60,6 @@ func (s *AdminServiceImpl) CreateQuizCategory(ctx context.Context, name, descrip
 		Active: true,
 	}
 	if num, err :=s.quizzesRepo.CreateCategory(ctx, &quizModel); err != nil || num == 0{
-		log.Print(err)
 		return quizzes.ErrCreatingCategory
 	}
 	return nil

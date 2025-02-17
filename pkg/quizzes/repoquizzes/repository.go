@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
+	"strings"
 
 	"github.com/diegobermudez03/couples-backend/pkg/infraestructure"
 	"github.com/diegobermudez03/couples-backend/pkg/quizzes"
@@ -88,7 +90,7 @@ func (r *QuizzesPostgresRepo) CreateQuiz(ctx context.Context, quiz *quizzes.Quiz
 			ctx,
 			`INSERT INTO quizzes(id, name, description, language_code, image_id, published, active, created_at, category_id, creator_id)
 			VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-			quiz.Id, quiz.Name, quiz.Description, quiz.LanguageCode, quiz.ImageId, quiz.Published, quiz.Active,
+			quiz.Id, quiz.Name, quiz.Description, strings.ToUpper(quiz.LanguageCode), quiz.ImageId, quiz.Published, quiz.Active,
 			quiz.CreatedAt, quiz.CategoryId, quiz.CreatorId,
 		)
 	})
@@ -101,7 +103,7 @@ func (r *QuizzesPostgresRepo) UpdateQuiz(ctx context.Context, quiz *quizzes.Quiz
 			ctx, 
 			`UPDATE quizzes SET name = $1, description = $2, category_id = $3, image_id = $4, active = $5, published = $6, language_code = $7
 			WHERE id = $8`,
-			quiz.Name, quiz.Description, quiz.CategoryId, quiz.ImageId, quiz.Active, quiz.Published, quiz.LanguageCode,quiz.Id,
+			quiz.Name, quiz.Description, quiz.CategoryId, quiz.ImageId, quiz.Active, quiz.Published, strings.ToUpper(quiz.LanguageCode),quiz.Id,
 		)
 	})
 }
@@ -183,7 +185,6 @@ func (r *QuizzesPostgresRepo) DeleteQuestions(ctx context.Context, filter quizze
 			`DELETE FROM quiz_questions WHERE active=TRUE `,
 			questionFilter(&filter),
 		)
-		log.Print(query)
 		return ex.ExecContext(ctx, query,args...)
 	})
 }
@@ -267,9 +268,39 @@ func (r *QuizzesPostgresRepo) GetQuestions(ctx context.Context, filter quizzes.Q
 func (r *QuizzesPostgresRepo) GetQuizzes(ctx context.Context, filter quizzes.QuizFilter) ([]quizzes.QuizPlainModel, error){
 	query, args := infraestructure.GetFilteredQuery(
 		`SELECT id, name, description, language_code, image_id, published, active, created_at, category_id, creator_id
-		FROM quizzes WHERE active=TRUE `,
+		FROM quizzes  WHERE active=TRUE `,
 		quizFilter(&filter),
 	)
+	counter := len(args)+1
+	//obtain only quizzes from creator or simply all the ones that are not from a creator
+	if filter.CreatorId != nil{
+		query = query + fmt.Sprintf(" AND creator_id=$%d", counter)
+		args = append(args, *filter.CreatorId)
+		counter++
+	}else {
+		query = query + " AND creator_id IS NULL"
+	}
+	// if theres a player id, then we ommit the already played quizzes
+	if filter.PlayerId != nil{
+		query = query + fmt.Sprintf(" AND NOT EXISTS( SELECT p.quiz_id FROM quizzes_played p WHERE p.user_id = $%d AND p.quiz_id = id)", counter)
+		args = append(args, *filter.PlayerId)
+		counter++
+	}
+	//if there's a search text
+	if filter.Text != nil{
+		args = append(args, *filter.Text)
+		query = query + fmt.Sprint(" AND (name ILIKE ('%' || $", counter ,"|| '%') OR description ILIKE ('%' || $",counter ," || '%'))")
+		counter++
+	}
+	if filter.OrderBy != nil{
+		switch(*filter.OrderBy){
+		case quizzes.OrderByDate : query = query +  " ORDER BY created_at DESC"
+		case quizzes.OrderByNPlayed : query = query + "ORDER BY (SELECT COUNT(*) FROM quizzes_played p WHERE p.quiz_id = id) DESC"
+		}
+	}
+	query, args2 := infraestructure.GetFetchingQuery(query, len(args), *filter.Limit, filter.Page)
+	args = append(args, args2...)
+	log.Print(query)
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil{
 		return nil, err 
@@ -348,6 +379,33 @@ func (r *QuizzesPostgresRepo) GetCategories(ctx context.Context, fetchFilters qu
 		if err == nil{
 			categories = append(categories, *cat)
 		}
+	}
+	return categories, nil
+}
+
+func (r *QuizzesPostgresRepo) GetBatchCategories(ctx context.Context, ids []uuid.UUID)([]quizzes.QuizCatPlainModel, error){
+	args := make([]any, len(ids))
+	idsString := strings.Builder{}
+	for i, id := range ids{
+		idsString.WriteString(fmt.Sprintf("$%d", i+1))
+		args[i] = id 
+		if i < len(ids)-1{
+			idsString.WriteString(",")
+		}
+	}
+	query := fmt.Sprintf(`SELECT id, name, description, created_at, active, image_id 
+		FROM quiz_categories WHERE id IN(%s)`, idsString.String())
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil{
+		return nil, err 
+	}
+	categories := make([]quizzes.QuizCatPlainModel, 0, len(ids))
+	for rows.Next(){
+		cat, err := r.rowToCategory(rows)
+		if err != nil{
+			return nil, err 
+		}
+		categories = append(categories, *cat)
 	}
 	return categories, nil
 }

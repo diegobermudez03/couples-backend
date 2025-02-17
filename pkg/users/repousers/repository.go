@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/diegobermudez03/couples-backend/pkg/infraestructure"
@@ -29,7 +30,7 @@ func (r *UsersPostgresRepo) CreateUser(ctx context.Context, user *users.UserMode
 			ctx, 
 			`INSERT INTO users(id, first_name, last_name, gender, birth_date, created_at, active, country_code, language_code, nickname)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-			user.Id, user.FirstName, user.LastName, user.Gender, user.BirthDate, user.CreatedAt, user.Active, user.CountryCode, user.LanguageCode, user.NickName,
+			user.Id, user.FirstName, user.LastName, user.Gender, user.BirthDate, user.CreatedAt, user.Active, user.CountryCode, strings.ToUpper(user.LanguageCode), user.NickName,
 		)
 	})
 }

@@ -9,6 +9,7 @@ type Config struct {
 	Port 		string
 	AuthConfig 	*AuthConfig
 	PostgresConfig *PostgresConfig
+	InteractionConfig *InteractionConfig
 }
 
 type AuthConfig struct{
@@ -21,11 +22,16 @@ type PostgresConfig struct{
 	Address 		string
 }
 
+type InteractionConfig struct{
+	MaxFetchResult	int
+}
+
 func NewConfig() *Config {
 	return &Config{
 		Port: getEnv("PORT", ":8081"),
 		AuthConfig: NewAuthConfig(),
 		PostgresConfig: NewPostgresConfig(),
+		InteractionConfig: NewInteractionConfig(),
 	}
 }
 
@@ -40,6 +46,12 @@ func NewAuthConfig() *AuthConfig{
 func NewPostgresConfig() *PostgresConfig{
 	return &PostgresConfig{
 		Address: getEnv("POSTGRES_DB", ""),
+	}
+}
+
+func NewInteractionConfig() *InteractionConfig{
+	return &InteractionConfig{
+		MaxFetchResult: int(getEnvAsInt64("MAX_RESULT_LIMIT", 20)),
 	}
 }
 

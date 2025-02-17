@@ -23,9 +23,12 @@ func userAnswerFilter(filter *quizzes.UserAnswerFilter) map[string]any{
 	}
 }
 
+
+
 func quizFilter(filter *quizzes.QuizFilter) map[string]any{
 	return map[string]any{
 		"id" 	:	filter.Id,
 		"category_id" : filter.CategoryId,
+		"language_code" : filter.LanguageCode,
 	}
 }
