@@ -377,6 +377,7 @@ func (s *UserService) GetCategories(ctx context.Context, filters quizzes.FetchFi
 }
 
 func (s *UserService) GetQuizes(ctx context.Context, quizFilters quizzes.QuizFilter, userId *uuid.UUID)([]quizzes.QuizModel, error){
+	quizFilters.PlayerId = userId
 	//get plain quizzes
 	if (quizFilters.Limit != nil && *quizFilters.Limit > s.maxFetchLimit) || quizFilters.Limit == nil{
 		quizFilters.Limit = new(int)
@@ -482,6 +483,8 @@ func (s *UserService) GetQuizesHomePage(ctx context.Context, userId uuid.UUID)(*
 	return &quizzes.QuizPage{
 		Quizzes: quizes,
 		Categories : categories,
+		Limit: s.maxFetchLimit,
+		Page: 1,
 	}, nil
 }
 

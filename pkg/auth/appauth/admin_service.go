@@ -45,7 +45,7 @@ func (s *AdminAuthServiceImpl) ValidateAccessToken(ctx context.Context, accessTo
 
 func (s *AdminAuthServiceImpl) CreateAccessToken(ctx context.Context, token string)(string, error){
 	session, err := s.repo.GetAdminSessionByToken(ctx, token)
-	if err != nil{
+	if err != nil || session == nil{
 		return "", auth.ErrorNonExistingSession 
 	}
 	accessToken, err := s.createAccessToken(session.Id)

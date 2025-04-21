@@ -49,6 +49,8 @@ type QuizModel struct{
 type QuizPage struct{
 	Quizzes 	[]QuizModel 	`json:"quizzes"`
 	Categories 	[]QuizCatModel	`json:"categories"`
+	Limit 		int 			`json:"limit"`
+	Page 		int 			`json:"page"`
 }
 
 type QuestionPlainModel struct{

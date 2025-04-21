@@ -462,7 +462,6 @@ func (h *QuizzesHandler) getQuizes(w http.ResponseWriter, r *http.Request){
 	var userId *uuid.UUID
 	if auxUserId := r.Context().Value(middlewares.UserIdKey{}); auxUserId != nil{
 		if pid, ok := auxUserId.(uuid.UUID); ok{
-			filter.PlayerId = &pid
 			userId = &pid
 		}
 	}
